@@ -32,8 +32,21 @@ Both `semantic` sub-fields were changed to plain `text` mappings instead:
 | `description.fields.semantic` | `{"type": "semantic_text", "inference_id": "opencouncil-multilingual-e5-small-elasticsearch"}` | `{"type": "text"}` |
 
 Everything else — the PGSync `nodes`/`children`/relationship structure, every
-other field mapping, `views.sql` — is byte-identical to upstream. Semantic
-(vector) search on subject name/description is unavailable on this stack
-until/unless an ELSER or custom inference endpoint is deployed self-hosted;
-lexical search on both fields (via their parent `text` mapping with the
-`greek` analyzer) is unaffected.
+other field mapping, `views.sql` — is byte-identical to upstream except for
+one more value:
+
+| Field | Old value | New value |
+|---|---|---|
+| top-level `database` | `"production"` | `"glasshouse"` |
+
+PGSync's `urls.py` substitutes this value for the path component of
+`PG_URL` (`.env.pgsync`) when building its internal connection string — it
+doesn't use `PG_URL`'s own path. Upstream's database is named `production`;
+ours is `glasshouse` (see `docker-compose.yml`'s `db` service and
+`.env.example`'s `PG_URL`/`DATABASE_URL`), so the literal `"production"`
+would point PGSync at a database that doesn't exist on this stack.
+
+Semantic (vector) search on subject name/description is unavailable on this
+stack until/unless an ELSER or custom inference endpoint is deployed
+self-hosted; lexical search on both fields (via their parent `text` mapping
+with the `greek` analyzer) is unaffected.

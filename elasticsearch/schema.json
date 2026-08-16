@@ -1,6 +1,6 @@
 [
   {
-    "database": "production",
+    "database": "glasshouse",
     "index": "subjects",
     "mapping": {
       "id": { "type": "keyword" },
