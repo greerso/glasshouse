@@ -44,7 +44,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: glasshouse
       TZ: America/Chicago
-    volumes: ["./volumes/pgdata:/var/lib/postgresql/data"]
+    # Named volume — /data is NFS (nolock); Postgres ESTALEs on that bind.
+    volumes: ["pgdata:/var/lib/postgresql/data"]
     restart: unless-stopped
   es:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
@@ -56,7 +57,8 @@ services:
     volumes: ["./volumes/esdata:/usr/share/elasticsearch/data"]
     restart: unless-stopped
   pgsync:
-    image: toluaina1/pgsync:latest
+    # toluaina1/pgsync:latest is linux/arm64 only; thinkstation is x86_64.
+    build: { context: ./pgsync }
     command: ["-d"]
     env_file: .env.pgsync
     depends_on: [db, es, valkey]
@@ -75,5 +77,10 @@ services:
     # Durable snapshotting — pgsync's checkpoint position (db 1) must survive
     # a restart, per Openship requirement.
     command: ["valkey-server", "--save", "60", "1"]
-    volumes: ["./volumes/valkeydata:/data"]
+    # Named volume — same NFS ESTALE reason as db.
+    volumes: ["valkeydata:/data"]
     restart: unless-stopped
+
+volumes:
+  pgdata:
+  valkeydata:
