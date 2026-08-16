@@ -12,7 +12,7 @@ services:
     # Sibling checkout on the deploy host. Task 7 may replace this with a
     # prebuilt SHA-tagged image (decision deferred to deploy time).
     build: { context: ../glasshouse-web }
-    ports: ["3000:3000"]
+    ports: ["3100:3000"]
     env_file: .env.web
     environment: { TZ: America/Chicago }
     depends_on: [db, valkey]
