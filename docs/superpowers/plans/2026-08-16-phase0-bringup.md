@@ -388,7 +388,7 @@ services:
     depends_on: [db, valkey]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
