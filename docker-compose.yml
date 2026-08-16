@@ -1,0 +1,66 @@
+# Openship compose stack for Glasshouse (US OpenCouncil fork).
+#
+# Constraints imposed by Openship v0.5.0 (do not "fix" these away):
+# - No `networks:` keys anywhere. Openship strips them at sync time — every
+#   service joins one project network and resolves peers by service name.
+# - No compose `profiles:`. Openship's service sync runs `docker compose
+#   config`, which silently drops profile-gated services from the synced
+#   stack.
+# - Commands are exec-form arrays only (no shell strings).
+services:
+  web:
+    build: { context: /Users/greer/dev/glasshouse-web }
+    ports: ["3000:3000"]
+    env_file: .env.web
+    depends_on: [db, valkey]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+  tasks:
+    build: { context: /Users/greer/dev/glasshouse-tasks }
+    ports: ["3005:3005"]
+    env_file: .env.tasks
+    environment: { TZ: America/Chicago }
+    volumes:
+      - ./volumes/tasks-data:/app/data
+      - ./volumes/tasks-logs:/app/logs
+    restart: unless-stopped
+  db:
+    image: postgis/postgis:16-3.5
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_USER: glasshouse
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: glasshouse
+    volumes: ["./volumes/pgdata:/var/lib/postgresql/data"]
+    restart: unless-stopped
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      ELASTIC_PASSWORD: ${ES_PASSWORD}
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+    volumes: ["./volumes/esdata:/usr/share/elasticsearch/data"]
+    restart: unless-stopped
+  pgsync:
+    image: toluaina1/pgsync:latest
+    command: ["-d"]
+    env_file: .env.pgsync
+    depends_on: [db, es, valkey]
+    restart: unless-stopped
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: glasshouse
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    volumes: ["./volumes/miniodata:/data"]
+    ports: ["9000:9000", "9001:9001"]
+    restart: unless-stopped
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
