@@ -93,6 +93,33 @@ test('a second pass with the same content hash skips meeting and subject writes'
     assert.ok(h.calls.length >= afterFirst);
 });
 
+test('agenda-less event creates and releases the meeting without POSTing subjects', async () => {
+    const h = collect();
+    const event = {
+        Event: {
+            CustomerEventID: 389,
+            EventTitle: 'Annual State of the Town Address',
+            EventDescription: '',
+            EventDateTimeUTC: '2026-07-23 14:00:00',
+        },
+    } as ChampdsEvent;
+    const result = await ingestEvent({
+        oc: h.oc,
+        champds: h.champds,
+        mirror: h.mirror,
+        cityId: 'thompsons-station',
+        publicFilesBaseUrl: h.publicFilesBaseUrl,
+        s3Bucket: h.s3Bucket,
+    }, { event, bodyId: 'thompsons-station-special-events' });
+
+    assert.equal(result.meetingId, 'champds-389');
+    assert.equal(result.subjectCount, 0);
+    assert.equal(h.calls.filter((c) => c.op === 'createMeeting').length, 1);
+    assert.equal(h.calls.filter((c) => c.op === 'upsertSubjects').length, 0);
+    assert.equal(h.calls.some((c) => c.op === 'release' && c.payload === 'champds-389'), true);
+    assert.ok(h.calls.some((c) => c.op === 'obs' && (c.payload as { source: string }).source === 'champds:event:389'));
+});
+
 test('a new event POSTs champds-{id} unreleased, then releases after subjects', async () => {
     const h = collect();
     const event = structuredClone(fixture);

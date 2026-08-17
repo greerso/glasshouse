@@ -107,17 +107,19 @@ export async function ingestEvent(
         });
     }
 
-    await deps.oc.upsertSubjects(
-        meetingId,
-        mapped.map((s) => ({
-            name: s.name,
-            description: s.description,
-            agendaItemIndex: s.agendaItemIndex,
-            contextCitationUrls: s.attachments
-                .map((a) => urlsByMediaId.get(a.CustomerMediaID))
-                .filter((u): u is string => Boolean(u)),
-        })),
-    );
+    if (mapped.length > 0) {
+        await deps.oc.upsertSubjects(
+            meetingId,
+            mapped.map((s) => ({
+                name: s.name,
+                description: s.description,
+                agendaItemIndex: s.agendaItemIndex,
+                contextCitationUrls: s.attachments
+                    .map((a) => urlsByMediaId.get(a.CustomerMediaID))
+                    .filter((u): u is string => Boolean(u)),
+            })),
+        );
+    }
 
     const firstPdf = mapped.flatMap((s) => s.attachments)[0];
     const agendaUrl = firstPdf ? urlsByMediaId.get(firstPdf.CustomerMediaID) : undefined;
