@@ -12,5 +12,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./
+# Host checkout is NFS with 0660 ACLs; USER node must be able to read the tree.
+RUN chmod -R a+rX /app
 USER node
 CMD ["node", "dist/index.js"]
