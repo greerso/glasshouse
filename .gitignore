@@ -6,3 +6,5 @@
 .env.pgsync
 .ingest-api-key
 volumes/
+ingest/node_modules
+ingest/dist

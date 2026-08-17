@@ -90,6 +90,17 @@ services:
     # Named volume — same NFS ESTALE reason as db.
     volumes: ["valkeydata:/data"]
     restart: unless-stopped
+  ingest:
+    # Openship v0.5.0 builds from the project dir (`.`), not a sibling
+    # context. Prebuild on the thinkstation:
+    #   docker build -t glasshouse-ingest:<sha> ./ingest
+    # INGEST_IMAGE is interpolated from this project's .env at `service sync`.
+    image: ${INGEST_IMAGE}
+    command: ["node", "dist/index.js"]
+    env_file: .env.ingest
+    environment: { TZ: America/Chicago }
+    depends_on: [web, minio]
+    restart: unless-stopped
 
 volumes:
   pgdata:

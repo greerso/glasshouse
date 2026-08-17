@@ -205,3 +205,89 @@ curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 | grep -E 'Meeting C
 pgsync (if up) will show `Elasticsearch: [17]` for `glasshouse:subjects`.
 Web image stays `glasshouse-web:a44a4018`. Do not enable `tasks` until
 the keys exist.
+
+## Phase 1 — document ingest
+
+Web APIs from Task 1 must be on the running image before ingest writes
+anything. Rebuild web from glasshouse-web branch `glasshouse` after that
+PR is pushed, then ingest.
+
+### Rebuild web (ingest APIs)
+
+```bash
+cd /data/openship/projects/glasshouse-web
+git pull --ff-only origin glasshouse
+SHA=$(git rev-parse --short HEAD)
+docker build --build-arg USE_LOCAL_DB=false \
+  --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  -t glasshouse-web:$SHA .
+# set thinkstation /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
+# PATCH stored web image= that tag, then POST /deployments for web only
+# entrypoint runs prisma migrate deploy (AgendaObservation) then next build
+```
+
+### Build ingest image
+
+```bash
+cd /data/openship/projects/glasshouse
+git pull --ff-only origin main   # or the feature branch until merged
+SHA=$(git -C ingest rev-parse --short HEAD 2>/dev/null || git rev-parse --short HEAD)
+docker build -t glasshouse-ingest:$SHA ./ingest
+docker run --rm --entrypoint node glasshouse-ingest:$SHA dist/index.js --help || true
+# the image CMD is node dist/index.js; --once is supported:
+docker run --rm --network openship-glasshouse \
+  --env-file /data/openship/projects/glasshouse/.env.ingest \
+  glasshouse-ingest:$SHA node dist/index.js --once
+```
+
+### Enable + deploy ingest only
+
+Same prebuilt-tag pattern as pgsync (`svc_-SgMFWFVOx_0-N4B`):
+
+- Write untracked `/data/openship/projects/glasshouse/.env.ingest` from `.env.example`.
+  `OC_API_KEY` is the existing ingest ServiceApiKey
+  (`/data/openship/projects/glasshouse/.ingest-api-key`, mode 600).
+- `INGEST_IMAGE=glasshouse-ingest:$SHA` in the project `.env`.
+- `openship service sync docker-compose.yml --project proj_5AhrGz_cRgruBEi7 --yes`
+- After sync, confirm stored web is still `image=glasshouse-web:<sha>` `enabled=true`,
+  pgsync `commandArgv=['-d']`, wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
+- PATCH stored ingest: `image=glasshouse-ingest:$SHA`, `build=""`, `enabled=true`,
+  `commandArgv=["node","dist/index.js"]`, `environment` from `.env.ingest`.
+- `POST /api/deployments` with **only** that ingest serviceId (or all currently
+  enabled compose services if a targeted deploy drops a sibling).
+- Do not enable `tasks`. Do not enable the monorepo wrapper.
+
+### Bucket
+
+If `glasshouse` does not yet exist on MinIO:
+
+```bash
+docker exec openship-glasshouse-minio \
+  mc alias set local http://localhost:9000 glasshouse "$MINIO_PASSWORD"
+docker exec openship-glasshouse-minio mc mb -p local/glasshouse
+```
+
+LAN-only public reads until `cdn.` exists. Objects are still written.
+
+### Verify event 390 is not duplicated
+
+```bash
+curl -sS http://10.0.0.66:3100/api/cities/thompsons-station/meetings
+# still exactly one row with id aug11_2026 (not champds-390)
+
+curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 \
+  | grep -E 'Meeting Called to Order|Consent Agenda|FOG|Adjourn'
+
+# after ingest has written PDFs:
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  http://10.0.0.66:9000/glasshouse/thompsons-station/champds/390/pdf/4672-Item-a-BOMA-Minutes-6_9_2026.pdf
+# expect 200 once that object exists
+
+docker logs openship-glasshouse-ingest --tail 50
+# expect: transcribe aug11_2026: skipped (Phase 1 ingest is document-only…)
+# expect: no "POST meeting" for 390; cycle processed/skipped/failed counts
+```
+
+Backfill is the first poll: missing observations newest-first for all 9
+groups with `EventDateTimeUTC >= 2022-11-01`. Subsequent 15-minute cycles
+only fetch event detail when the list fingerprint changes or the event is new.
