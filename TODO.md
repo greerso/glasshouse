@@ -24,7 +24,8 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [ ] Contact Schema Labs (Discord) re first US instance (user action)
 
 ## Phase 1 — ingestion + backfill + elections (weeks 3–5)
-- [ ] `glasshouse-ingest`: ChampDS + town-site poller, MinIO mirroring, task triggering, observation posting
+- [x] `glasshouse-ingest`: ChampDS document-only poller live (meetings + subjects + PDF mirror + observations). Town-site poller / transcription trigger still out.
+- [ ] Town-site poller (late-agenda observations) — not in the ChampDS ingest plan
 - [ ] Vote extraction (roll-call > transcript > voice-vote inference rule) + review queue
 - [ ] Backfill Nov 2022→present, newest-first, $500 cap w/ reassess at 20 videos
 - [ ] Elections page (candidate list, historical results)
