@@ -9,9 +9,13 @@
 # - Commands are exec-form arrays only (no shell strings).
 services:
   web:
-    # Sibling checkout on the deploy host. Task 7 may replace this with a
-    # prebuilt SHA-tagged image (decision deferred to deploy time).
-    build: { context: ../glasshouse-web }
+    # Openship v0.5.0 builds from the project dir (`.`), not a sibling
+    # context. Prebuild on the thinkstation:
+    #   docker build --build-arg USE_LOCAL_DB=false \
+    #     --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git -C ../glasshouse-web rev-parse HEAD) \
+    #     -t glasshouse-web:<sha> ../glasshouse-web
+    # WEB_IMAGE is interpolated from this project's .env at `service sync`.
+    image: ${WEB_IMAGE}
     ports: ["3100:3000"]
     env_file: .env.web
     environment: { TZ: America/Chicago }
@@ -26,8 +30,9 @@ services:
       # the port opens — so give it room before healthcheck failures count.
       start_period: 10m
   tasks:
-    # Sibling checkout on the deploy host. Task 7 may replace this with a
-    # prebuilt SHA-tagged image (decision deferred to deploy time).
+    # TODO: Openship cannot build sibling ../glasshouse-tasks (same `.`
+    # context bug as web). Switch to `image: ${TASKS_IMAGE}` and a
+    # thinkstation-prebuilt tag before enabling this service.
     build: { context: ../glasshouse-tasks }
     ports: ["3005:3005"]
     env_file: .env.tasks
