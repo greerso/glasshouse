@@ -3,7 +3,9 @@
 Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08-16, critical-assessment complete)
 
 ## Time-critical (independent of build)
-- [ ] **Week of Aug 20, 2026:** capture certified Nov 2026 candidate list from Williamson County Election Commission (qualifying closes Thu Aug 20 noon; withdrawal Aug 27). Preserve artifacts.
+- [x] **2026-08-17:** pre-deadline WCEC capture saved in `docs/research/2026-11-election/` (no names yet — qualifying still open).
+- [ ] **Thu Aug 20, 2026 after noon + Fri Aug 21 WCEC meeting:** recapture certified/qualified Nov 2026 municipal list (TS Mayor + 2 alderman).
+- [ ] **Thu Aug 27, 2026 after noon:** recapture ballot-final list after withdrawal.
 - [ ] User decision (pre-public-launch): TN attorney consult re LLC + media-liability insurance.
 
 ## Phase 0 — bring-up (weeks 1–2)
@@ -17,7 +19,7 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [ ] Openship deploy full stack on thinkstation (project create → service sync → POST /deployments; verify stored model incl. env fidelity)
 - [x] Elasticsearch auth + index bootstrap (pgsync --bootstrap + GRANT); PGSync daemon
 - [ ] Cloudflare Tunnel (glasshouse.town → web, cdn. → MinIO read-only, tasks. → pyannote callbacks); host firewall
-- [ ] Seed: superadmin, City, 9 AdministrativeBodies, People/Roles (rosters in spec)
+- [x] Seed: superadmin, City, 9 AdministrativeBodies, People/Roles (rosters in spec)
 - [ ] Manual E2E: one meeting (ChampDS MP4) → transcribe → summarize → review UI
 - [ ] Contact Schema Labs (Discord) re first US instance (user action)
 
