@@ -63,7 +63,12 @@ services:
     restart: unless-stopped
   pgsync:
     # toluaina1/pgsync:latest is linux/arm64 only; thinkstation is x86_64.
-    build: { context: ./pgsync }
+    # Prebuild on the thinkstation (Openship deploy uses this tag, same
+    # pattern as web — do not rely on a Hub pull of this name):
+    #   docker build -t glasshouse-pgsync:7.3.0 ./pgsync
+    # One-time bootstrap is a one-off on openship-glasshouse, not this
+    # service command. Daemon flag is -d (pgsync 7.3.0).
+    image: glasshouse-pgsync:7.3.0
     command: ["-d"]
     env_file: .env.pgsync
     depends_on: [db, es, valkey]
