@@ -32,6 +32,20 @@ test('hashEventDetail changes when an agenda title changes', () => {
     assert.notEqual(hashEventDetail(mutated), baseline);
 });
 
+test('hashEventDetail accepts an event with no Agenda', () => {
+    const event = {
+        Event: {
+            CustomerEventID: 89,
+            EventTitle: '(CANCELLED) Parks & Recreation Board Meeting',
+            EventDescription: '',
+            EventDateTimeUTC: '2023-10-03 23:00:00',
+        },
+    } as ChampdsEvent;
+    const hash = hashEventDetail(event);
+    assert.match(hash, /^[a-f0-9]{64}$/);
+    assert.equal(hashEventDetail(event), hash);
+});
+
 test('hashEventListRow ignores LastModifyDateTimeUTC', () => {
     const row = {
         CustomerEventID: 390,

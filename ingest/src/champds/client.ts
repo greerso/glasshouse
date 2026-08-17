@@ -35,6 +35,16 @@ export function createChampdsClient(cfg: ChampdsClientConfig): ChampdsClient {
         return res.json() as Promise<T>;
     }
 
+    function pdfUrl(att: ChampdsAttachment): string {
+        const name = att.MediaFileName ?? '';
+        if (/^https?:\/\//i.test(name)) return name;
+        const loc = (att.MediaFileLocation ?? '').replace(/^\/+|\/+$/g, '');
+        const file = name.replace(/^\/+/, '');
+        return loc
+            ? `https://play.champds.com/ATT/thompsonsstationtn/${loc}/${file}`
+            : `https://play.champds.com/ATT/thompsonsstationtn/${file}`;
+    }
+
     return {
         listGroup(groupId) {
             return getJson<ChampdsListEvent[]>(
@@ -44,12 +54,10 @@ export function createChampdsClient(cfg: ChampdsClientConfig): ChampdsClient {
         getEvent(eventId) {
             return getJson<ChampdsEvent>(`${cfg.champdsBaseUrl}/event/${eventId}`);
         },
-        pdfUrl(att) {
-            return `https://play.champds.com/ATT/thompsonsstationtn/${att.MediaFileLocation}/${att.MediaFileName}`;
-        },
+        pdfUrl,
         async downloadPdf(att) {
             await gap();
-            const url = `https://play.champds.com/ATT/thompsonsstationtn/${att.MediaFileLocation}/${att.MediaFileName}`;
+            const url = pdfUrl(att);
             const res = await fetchImpl(url, { headers: { 'user-agent': cfg.userAgent } });
             if (!res.ok) throw new Error(`PDF ${res.status} ${url}`);
             return new Uint8Array(await res.arrayBuffer());

@@ -27,6 +27,45 @@ test('event 390 keeps ChampDS titles (trailing colons) so upsert matches existin
     assert.match(subjects[6].name, /FOG/);
 });
 
+test('missing Agenda maps to zero subjects', () => {
+    const event = {
+        Event: {
+            CustomerEventID: 389,
+            EventTitle: 'Annual State of the Town Address',
+            EventDescription: '',
+            EventDateTimeUTC: '2026-07-23 14:00:00',
+        },
+        MediaInfo: { MediaPath: '/x.mp4' },
+    } as ChampdsEvent;
+    assert.deepEqual(mapSubjects(event), []);
+});
+
+test('empty Title falls back to stripped Description', () => {
+    const event = {
+        Event: {
+            CustomerEventID: 250,
+            EventTitle: 'Work Session',
+            EventDescription: '',
+            EventDateTimeUTC: '2025-03-31 22:00:00',
+        },
+        Agenda: {
+            AgendaItems: [
+                {
+                    CustomerAgendaItemID: 2991,
+                    Title: '',
+                    Description: '<p><em>Note: A Budget Workshop</em></p>',
+                    OrderOrdinal: 70,
+                    OrderParentID: 0,
+                    Attachments: [],
+                },
+            ],
+        },
+    } as ChampdsEvent;
+    const subjects = mapSubjects(event);
+    assert.equal(subjects.length, 1);
+    assert.equal(subjects[0].name, 'Note: A Budget Workshop');
+});
+
 test('consent agenda keeps its PDF attachments on that subject', () => {
     const consent = mapSubjects(fixture).find((s) => s.agendaItemIndex === 40);
     assert.ok(consent);

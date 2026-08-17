@@ -26,14 +26,18 @@ export function agendaItemIndex(item: ChampdsAgendaItem, parent: ChampdsAgendaIt
 }
 
 export function mapSubjects(event: ChampdsEvent): MappedSubject[] {
-    const flat = flatten(event.Agenda.AgendaItems, null);
+    const flat = flatten(event.Agenda?.AgendaItems ?? [], null);
     const used = new Set<number>();
     return flat.map(({ item, parent }) => {
         let index = agendaItemIndex(item, parent);
         while (used.has(index)) index += 1;
         used.add(index);
+        const name =
+            stripHtml(item.Title) ||
+            stripHtml(item.Description ?? '') ||
+            `Untitled item ${item.CustomerAgendaItemID}`;
         return {
-            name: stripHtml(item.Title),
+            name,
             description: stripHtml(item.Description ?? ''),
             agendaItemIndex: index,
             attachments: item.Attachments ?? [],

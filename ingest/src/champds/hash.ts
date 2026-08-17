@@ -31,7 +31,7 @@ export function hashEventDetail(event: ChampdsEvent): string {
         description: event.Event.EventDescription,
         dateTimeUtc: event.Event.EventDateTimeUTC,
         mediaPath: event.MediaInfo?.MediaPath ?? null,
-        items: flatten(event.Agenda.AgendaItems),
+        items: flatten(event.Agenda?.AgendaItems ?? []),
         minutes: (event.Minutes?.Attachments ?? []).map((a) => a.CustomerMediaID),
     };
     return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');

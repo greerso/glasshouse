@@ -27,7 +27,7 @@ export type ChampdsEvent = {
         LastModifyDateTimeUTC?: string | null;
         EventPublishStatusID?: number;
     };
-    Agenda: { AgendaItems: ChampdsAgendaItem[]; Attachments?: ChampdsAttachment[] };
+    Agenda?: { AgendaItems: ChampdsAgendaItem[]; Attachments?: ChampdsAttachment[] } | null;
     Minutes?: { Attachments?: ChampdsAttachment[] };
     MediaInfo?: { MediaPath?: string | null } | null;
 };

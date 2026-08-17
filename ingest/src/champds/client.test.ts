@@ -2,6 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BROWSER_UA, createChampdsClient } from './client.ts';
 
+test('pdfUrl uses a ChampDS-stored absolute URL as-is', () => {
+    const client = createChampdsClient({
+        champdsBaseUrl: 'https://playapi.champds.com/thompsonsstationtn',
+        requestGapMs: 0,
+        userAgent: BROWSER_UA,
+    });
+    const stored =
+        'https://play.champds.com/ATT/thompsonsstationtn/2024-11/1c96ef899101b220b4ee0ec48e69d2fb0d5b26a2.pdf';
+    assert.equal(
+        client.pdfUrl({
+            CustomerMediaID: 1735,
+            MediaFileName: stored,
+            MediaFileLocation: '',
+            MediaNickName: '',
+            SizeBytes: 0,
+        }),
+        stored,
+    );
+});
+
 test('pdfUrl uses the verified ATT path', () => {
     const client = createChampdsClient({
         champdsBaseUrl: 'https://playapi.champds.com/thompsonsstationtn',
