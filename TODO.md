@@ -15,7 +15,7 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [x] Compose stack for Openship (7 services, ES schema adapted for self-hosted) — feature/phase0-bringup
 - [ ] **GATE (user):** register glasshouse.town + Cloudflare zone; API keys: Anthropic, ElevenLabs (speech-to-text), pyannote.ai, Mux, Resend, Mapbox, Google geocoding (NO Perplexity needed); confirm openship CLI access to thinkstation
 - [ ] Openship deploy full stack on thinkstation (project create → service sync → POST /deployments; verify stored model incl. env fidelity)
-- [ ] Elasticsearch auth + index bootstrap (pgsync --bootstrap + GRANT); PGSync daemon
+- [x] Elasticsearch auth + index bootstrap (pgsync --bootstrap + GRANT); PGSync daemon
 - [ ] Cloudflare Tunnel (glasshouse.town → web, cdn. → MinIO read-only, tasks. → pyannote callbacks); host firewall
 - [ ] Seed: superadmin, City, 9 AdministrativeBodies, People/Roles (rosters in spec)
 - [ ] Manual E2E: one meeting (ChampDS MP4) → transcribe → summarize → review UI
