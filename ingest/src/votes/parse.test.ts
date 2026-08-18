@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { isMinutesLike, parseMinutesText } from './parse.ts';
+import { isMinutesLike, parseMinutesText, rollCallEnd } from './parse.ts';
 import { MINUTES_PARSER_VERSION } from './types.ts';
 
 const fixture = readFileSync(
@@ -94,6 +94,7 @@ test('Sarah Benson amendment passed 3-1-1 with White ABSTAIN', () => {
     assert.equal(vote.isAmendment, true);
     assert.equal(vote.ordinanceNumber, null);
     assert.match(vote.motionText, /Sarah Benson/i);
+    assert.match(vote.motionText, /Steelhead|amended the main motion/i);
     assert.equal(vote.outcome, 'PASSED');
     assert.equal(vote.yayCount, 3);
     assert.equal(vote.nayCount, 1);
@@ -106,10 +107,23 @@ test('Sarah Benson amendment passed 3-1-1 with White ABSTAIN', () => {
 test('main amended Sarah Benson passed 5-0 and is not an amendment', () => {
     const vote = parseMinutesText(fixture).votes[7];
     assert.equal(vote.isAmendment, false);
+    assert.ok(vote.motionText.length > 0);
+    assert.match(vote.motionText, /Sarah Benson/i);
     assert.equal(vote.outcome, 'PASSED');
     assert.equal(vote.yayCount, 5);
     assert.equal(vote.nayCount, 0);
     assert.deepEqual(lastNames(vote, 'FOR'), ['Alexander', 'King', 'Stover', 'White', 'Whitmer']);
+});
+
+test('rollCallEnd for vote 7 is before vote 8 header', () => {
+    const header = 'The amended motion passed with the following vote:';
+    const start = fixture.indexOf(header);
+    assert.ok(start >= 0);
+    const headerEnd = start + header.length;
+    const end = rollCallEnd(headerEnd, fixture.slice(headerEnd, headerEnd + 400));
+    const next = fixture.indexOf('The main amended motion passed with the following vote:');
+    assert.ok(end > headerEnd);
+    assert.ok(end < next);
 });
 
 test('2026-017 FOG passed 5-0', () => {

@@ -35,10 +35,12 @@ function parseBucket(
     return { count: Number(match[1]), names: parseNames(match[2]) };
 }
 
-function rollCallEnd(headerEnd: number, tail: string): number {
+export function rollCallEnd(headerEnd: number, tail: string): number {
+    const nextVote = tail.search(/The (?:amended |main amended |main )?motion (?:passed|failed|carried)\b/i);
+    const scan = nextVote >= 0 ? tail.slice(0, nextVote) : tail;
     const countRe = /\d+\s*-\s*(?:Yay|Nay|Abstain)(?:\s+Votes)?:[^\n]*/gi;
     let last = 0;
-    for (const match of tail.matchAll(countRe)) {
+    for (const match of scan.matchAll(countRe)) {
         last = (match.index ?? 0) + match[0].length;
     }
     return headerEnd + last;
@@ -65,8 +67,14 @@ function extractOrdinance(text: string): string | null {
     return match ? `${match[1]}-${match[2]}` : null;
 }
 
-function motionInWindow(window: string): string {
-    const start = window.search(MOTION_RE);
+function lastMatchIndex(text: string, re: RegExp): number {
+    const global = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+    let last = -1;
+    for (const match of text.matchAll(global)) last = match.index ?? -1;
+    return last;
+}
+
+function sliceMotion(window: string, start: number): string {
     if (start < 0) return '';
     let body = window.slice(start);
     const stop = body.search(
@@ -74,6 +82,20 @@ function motionInWindow(window: string): string {
     );
     if (stop > 0) body = body.slice(0, stop);
     return collapseWs(body).replace(/[.,;:]+$/, '');
+}
+
+function motionInWindow(
+    window: string,
+    opts: { isAmendment: boolean; preferParentMotion?: boolean },
+): string {
+    if (opts.preferParentMotion) {
+        return sliceMotion(window, lastMatchIndex(window, /\bmade a motion\b/i));
+    }
+    if (opts.isAmendment) {
+        const amended = lastMatchIndex(window, /\bamended the main motion\b/i);
+        if (amended >= 0) return sliceMotion(window, amended);
+    }
+    return sliceMotion(window, lastMatchIndex(window, MOTION_RE));
 }
 
 function parseAttendance(text: string): ParsedAttendance[] {
@@ -98,7 +120,7 @@ function parseAttendance(text: string): ParsedAttendance[] {
         });
 }
 
-type LocatedVote = { index: number; end: number; vote: ExtractedVote };
+type LocatedVote = { index: number; end: number; prefix: string; vote: ExtractedVote };
 
 function parseRollCalls(text: string): LocatedVote[] {
     const out: LocatedVote[] = [];
@@ -113,6 +135,7 @@ function parseRollCalls(text: string): LocatedVote[] {
         out.push({
             index,
             end,
+            prefix: match[1] ?? '',
             vote: {
                 motionText: '',
                 ordinanceNumber: null,
@@ -144,6 +167,7 @@ function parseVoiceVotes(text: string, rollStarts: Set<number>): LocatedVote[] {
         out.push({
             index,
             end: index + match[0].length,
+            prefix: match[1] ?? '',
             vote: {
                 motionText: collapseWs(match[0]),
                 ordinanceNumber: null,
@@ -167,7 +191,17 @@ function attachMotions(text: string, located: LocatedVote[]): ExtractedVote[] {
     return ordered.map((item, i) => {
         const windowStart = i === 0 ? 0 : ordered[i - 1].end;
         const window = text.slice(windowStart, item.index);
-        const motionText = motionInWindow(window) || item.vote.motionText;
+        let motionText = motionInWindow(window, { isAmendment: item.vote.isAmendment });
+        if (!motionText && i > 0) {
+            const prevStart = i === 1 ? 0 : ordered[i - 2].end;
+            const prevWindow = text.slice(prevStart, ordered[i - 1].index);
+            const preferParentMotion = item.prefix === 'main ' || item.prefix === 'main amended ';
+            motionText = motionInWindow(prevWindow, {
+                isAmendment: item.vote.isAmendment,
+                preferParentMotion,
+            });
+        }
+        motionText = motionText || item.vote.motionText;
         return {
             ...item.vote,
             motionText,
