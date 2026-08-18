@@ -291,3 +291,168 @@ docker logs openship-glasshouse-ingest --tail 50
 Backfill is the first poll: missing observations newest-first for all 9
 groups with `EventDateTimeUTC >= 2022-11-01`. Subsequent 15-minute cycles
 only fetch event detail when the list fingerprint changes or the event is new.
+
+## Phase 1 — minutes vote extraction
+
+Extract named roll-call / voice outcomes from already-mirrored ChampDS minutes
+PDFs onto the meeting the minutes *document* (June 9 BOMA is `champds-377`,
+even though the PDF is attached to Aug 11 `aug11_2026`). No Anthropic. No
+`pollDecisions.ts`. Do not enable `tasks`. Do not invent keys. Do not flip
+`NEXTAUTH_URL`.
+
+Web HEAD that ships tallies + unreviewed badge: `ae9b4f1c`, plus typecheck
+follow-ups `219acb8e` (omit `meetingAttendance` from `MeetingDataForExport`)
+and `e789f435` (stub `voteResult` on search results). Deploy
+`glasshouse-web:e789f435` or later. Ingest HEAD that ships `pdftotext` +
+extract hook: `cf91be7` → `glasshouse-ingest:cf91be7`. Bake the full web
+commit into `NEXT_PUBLIC_BUILD_COMMIT_SHA`. `ae9b4f1c` alone fails
+`next build` (`Admin.tsx` export + `SearchResultLight`).
+
+Prefer **PATCH stored image + `POST /api/deployments/build/access` by
+serviceId**. Do **not** `service sync` unless both image env vars already
+point at the tags you are about to run.
+
+### Rebuild web (schema + votes API + public tallies)
+
+```bash
+cd /data/openship/projects/glasshouse-web
+git pull --ff-only origin glasshouse
+SHA=$(git rev-parse --short HEAD)   # expect ae9b4f1c or later
+docker build --build-arg USE_LOCAL_DB=false \
+  --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  -t glasshouse-web:$SHA .
+# set /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
+# PATCH stored web svc_ZkdBYClULMR_ZwAt image= that tag, enabled=true, build=""
+# POST /api/deployments/build/access serviceIds=[web]
+# entrypoint: USE_LOCAL_DB=false → prisma migrate deploy, then next build
+```
+
+Confirm after web is Ready: cache namespace contains the full SHA;
+`aug11_2026` still released with 17 subjects; meeting count not wiped.
+
+### Rebuild ingest (poppler + extract hook)
+
+```bash
+cd /data/openship/projects/glasshouse
+git pull --ff-only origin feature/phase0-bringup   # or main after merge
+SHA=$(git rev-parse --short HEAD)   # expect cf91be7 or later
+docker build -t glasshouse-ingest:$SHA ./ingest
+docker run --rm --entrypoint pdftotext glasshouse-ingest:$SHA -v
+# pdftotext version 22.12.0 (or the bookworm poppler-utils line)
+# set project .env INGEST_IMAGE=glasshouse-ingest:$SHA
+# PATCH stored ingest svc_HPIp4xRYqr-a4-DE image= that tag, enabled=true, build=""
+# POST /api/deployments/build/access serviceIds=[ingest]
+```
+
+### Before any `service sync`
+
+```bash
+grep -E '^(WEB_IMAGE|INGEST_IMAGE)=' /data/openship/projects/glasshouse/.env
+# both must be the intended prebuilt tags. If either is missing or stale, stop.
+```
+
+Do not `service sync` for a minutes-vote rebuild. Targeted PATCH + deploy is
+enough. After any accidental sync, re-read stored models: web
+`image=glasshouse-web:<sha>` `enabled=true`, ingest
+`image=glasshouse-ingest:<sha>` `enabled=true`, pgsync `commandArgv=['-d']`,
+wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
+
+### Watch the db after every deploy
+
+Targeted web/ingest deploys have dropped `openship-glasshouse-db`. After
+**every** `POST /deployments`:
+
+```bash
+docker ps --filter name=openship-glasshouse-db --format '{{.Names}} {{.Status}} {{.Image}}'
+docker inspect openship-glasshouse-db --format '{{range .Mounts}}{{.Name}} {{.Destination}}{{end}}'
+# expect openship-glasshouse-pgdata → /var/lib/postgresql/data
+```
+
+If the db container is gone, restore by redeploying the enabled stack **without
+tasks** (the named volume still holds the data):
+
+```bash
+# POST /api/deployments/build/access serviceIds=
+#   web svc_ZkdBYClULMR_ZwAt
+#   db  svc_YoqObVPf2fBmTIlw
+#   es  svc_ftu9jLpMwPHC4mEM
+#   minio svc_PG8Q5nQsrivcKsLb
+#   valkey svc_NZ8lr1xvGgYKzTmo
+#   pgsync svc_-SgMFWFVOx_0-N4B
+#   ingest svc_HPIp4xRYqr-a4-DE
+# Do NOT include tasks svc_BMBAUNQxHCxL5FMe.
+```
+
+Do not `psql`-insert votes. Do not `docker volume rm`.
+
+### Extract June 9 onto champds-377
+
+A fresh ingest process re-gets event 390 (hash map empty) and extracts the
+already-mirrored `BOMA Minutes 6_9_2026` PDF. Either wait for the daemon's
+first cycle after the ingest container starts, or run `--once` on the project
+network:
+
+```bash
+docker exec openship-glasshouse-ingest node dist/index.js --once
+# or one-off (same env as the daemon):
+docker run --rm --network openship-glasshouse \
+  --env-file /data/openship/projects/glasshouse/.env.ingest \
+  glasshouse-ingest:$SHA node dist/index.js --once
+```
+
+If `champds-377` 404s or extract logs `meeting-not-ingested`, ingest the June 9
+event first (it is already in the ChampDS backfill window). Then `--once`
+again. Do not write `SubjectVote` / `SubjectVoteResult` by hand.
+
+### Verify LAN tallies
+
+```bash
+curl -sS http://10.0.0.66:3100/api/cities/thompsons-station/meetings/champds-377
+# 200; June 9 BOMA
+
+curl -sS http://10.0.0.66:3100/thompsons-station/champds-377 \
+  | grep -E 'Yay|Alexander|Machine-extracted|unreviewed|Amendment: Ordinance 2026-014'
+# public card: named yays (Alexander …), unreviewed / Machine-extracted badge
+
+curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 \
+  | grep -cE 'Meeting Called to Order|Consent Agenda|FOG|Adjourn'
+# still 17 subjects; no vote extraction onto Aug 11
+```
+
+Idempotency + counts (inside the db container; no secrets printed):
+
+```bash
+docker exec openship-glasshouse-db \
+  psql -U glasshouse -d glasshouse -c "
+SELECT
+  (SELECT count(*) FROM \"SubjectVoteResult\" svr
+     JOIN \"Subject\" s ON s.id = svr.\"subjectId\"
+    WHERE s.\"councilMeetingId\" = 'champds-377') AS vote_results,
+  (SELECT count(*) FROM \"SubjectVote\" sv
+     JOIN \"Subject\" s ON s.id = sv.\"subjectId\"
+    WHERE s.\"councilMeetingId\" = 'champds-377') AS subject_votes,
+  (SELECT count(*) FROM \"MeetingAttendance\"
+    WHERE \"councilMeetingId\" = 'champds-377'
+      AND source = 'decision' AND status = 'PRESENT') AS present;
+"
+# expect vote_results >= 10 (8 agenda + 2 amendments), present = 5
+
+docker exec openship-glasshouse-db \
+  psql -U glasshouse -d glasshouse -c "
+SELECT s.name, svr.\"yayCount\", svr.\"nayCount\", svr.\"abstainCount\", svr.outcome
+  FROM \"SubjectVoteResult\" svr
+  JOIN \"Subject\" s ON s.id = svr.\"subjectId\"
+ WHERE s.\"councilMeetingId\" = 'champds-377'
+ ORDER BY s.name;
+"
+# Amendment: Ordinance 2026-014 → 2 / 3 / 0 FAILED
+# consent parent → 5 / 0 / 0 PASSED
+# Sarah Benson amendment (Amendment: amended the main motion…) → 3 / 1 / 1 PASSED
+```
+
+Re-run `--once`. `SubjectVote` count for `champds-377` must not increase.
+
+```bash
+docker exec openship-glasshouse-ingest pdftotext -v
+# same poppler line as the image check
+```
