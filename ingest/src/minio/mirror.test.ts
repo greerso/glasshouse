@@ -22,6 +22,33 @@ test('publicUrl is path-style until cdn. exists', () => {
     );
 });
 
+test('get returns object bytes via GetObject', async () => {
+    const sent: unknown[] = [];
+    const mirror = createMirror({
+        endpoint: 'http://minio:9000',
+        region: 'us-east-1',
+        accessKey: 'glasshouse',
+        secretKey: 'secret',
+        bucket: 'glasshouse',
+        publicBaseUrl: 'http://10.0.0.66:9000',
+        forcePathStyle: true,
+        send: async (command) => {
+            sent.push(command.input);
+            return {
+                Body: {
+                    transformToByteArray: async () => new Uint8Array([37, 80, 68, 70]),
+                },
+            };
+        },
+    });
+    const bytes = await mirror.get('thompsons-station/champds/390/pdf/4672-x.pdf');
+    assert.deepEqual(bytes, new Uint8Array([37, 80, 68, 70]));
+    assert.deepEqual(sent[0], {
+        Bucket: 'glasshouse',
+        Key: 'thompsons-station/champds/390/pdf/4672-x.pdf',
+    });
+});
+
 test('putPdf sends PutObject with path-style client options and returns the public URL', async () => {
     const sent: unknown[] = [];
     const mirror = createMirror({

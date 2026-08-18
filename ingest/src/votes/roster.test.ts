@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SEED_LAST_NAME_IDS, matchLastName } from './roster.ts';
+import { SEED_LAST_NAME_IDS, matchLastName, rosterFromPeople } from './roster.ts';
 
 test('seed last-name map resolves the five June 9 members', () => {
     assert.equal(matchLastName('Stover', SEED_LAST_NAME_IDS), 'thompsons-station-brian-stover');
@@ -16,6 +16,24 @@ test('matchLastName is case-insensitive on the seed map', () => {
 
 test('unknown last name is dropped', () => {
     assert.equal(matchLastName('Smith', SEED_LAST_NAME_IDS), undefined);
+});
+
+test('rosterFromPeople filters to BOMA so Alexander is unique', () => {
+    const people = [
+        {
+            id: 'thompsons-station-shaun-alexander',
+            name: 'Shaun Alexander',
+            roles: [{ administrativeBodyId: 'thompsons-station-boma' }],
+        },
+        {
+            id: 'thompsons-station-sarah-alexander',
+            name: 'Sarah Alexander',
+            roles: [{ administrativeBodyId: 'thompsons-station-planning' }],
+        },
+    ];
+    const roster = rosterFromPeople(people, 'thompsons-station-boma');
+    assert.equal(matchLastName('Alexander', roster), 'thompsons-station-shaun-alexander');
+    assert.equal(roster.length, 1);
 });
 
 test('ambiguous last name is dropped', () => {

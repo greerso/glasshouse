@@ -1,4 +1,4 @@
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { ChampdsAttachment } from '../champds/types.ts';
 
 export function objectKey(cityId: string, eventId: number, att: ChampdsAttachment): string {
@@ -35,6 +35,13 @@ export function createMirror(deps: MirrorDeps) {
     const send = deps.send ?? ((command) => client.send(command as never));
 
     return {
+        async get(key: string): Promise<Uint8Array> {
+            const out = await send(new GetObjectCommand({ Bucket: deps.bucket, Key: key })) as {
+                Body?: { transformToByteArray?: () => Promise<Uint8Array> };
+            };
+            if (!out.Body?.transformToByteArray) throw new Error(`empty object ${key}`);
+            return new Uint8Array(await out.Body.transformToByteArray());
+        },
         async exists(key: string): Promise<boolean> {
             try {
                 await send(new HeadObjectCommand({ Bucket: deps.bucket, Key: key }));

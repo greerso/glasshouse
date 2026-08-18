@@ -5,6 +5,13 @@ import { EXISTING_MEETING_IDS, mapMeeting, meetingIdForEvent } from './map/meeti
 import { mapSubjects } from './map/subjects.ts';
 import { objectKey, publicUrl } from './minio/mirror.ts';
 import { requestTranscription } from './transcribe.ts';
+import {
+    applyMinutesPdf,
+    type ApplyMinutesDeps,
+    type ApplyMinutesInput,
+    type ApplyMinutesResult,
+} from './votes/apply.ts';
+import { extractPdfText } from './votes/pdftext.ts';
 
 export type IngestResult = {
     meetingId: string;
@@ -19,12 +26,10 @@ export type CycleSummary = {
 };
 
 export type IngestEventDeps = {
-    oc: {
+    oc: ApplyMinutesDeps['oc'] & {
         getObservations(source?: string): Promise<{ source: string; contentHash: string; meetingId?: string | null }[]>;
-        upsertObservation(row: { source: string; contentHash: string; meetingId?: string }): Promise<void>;
         createMeeting(payload: Record<string, unknown>): Promise<{ id: string; released: boolean }>;
         putMeeting(meetingId: string, payload: Record<string, unknown>): Promise<void>;
-        upsertSubjects(meetingId: string, subjects: unknown[]): Promise<unknown[]>;
         releaseMeeting(meetingId: string): Promise<void>;
     };
     champds: {
@@ -35,10 +40,13 @@ export type IngestEventDeps = {
     mirror: {
         exists(key: string): Promise<boolean>;
         putPdf(input: { key: string; body: Uint8Array; contentType: string }): Promise<{ key: string; url: string }>;
+        get(key: string): Promise<Uint8Array>;
     };
     cityId: string;
     publicFilesBaseUrl: string;
     s3Bucket: string;
+    extractPdfText?: (bytes: Uint8Array) => Promise<string>;
+    applyMinutesPdf?: (deps: ApplyMinutesDeps, input: ApplyMinutesInput) => Promise<ApplyMinutesResult>;
 };
 
 export type CycleDeps = {
@@ -64,6 +72,33 @@ function eventInstant(utc: string): number {
     return Date.parse(utc.includes('T') ? utc : utc.replace(' ', 'T') + 'Z');
 }
 
+function decodeNick(nick: string): string {
+    try {
+        return decodeURIComponent(nick);
+    } catch {
+        return nick;
+    }
+}
+
+export function isMinutesLikeAttachment(att: ChampdsAttachment, fromMinutesSlot = false): boolean {
+    if (fromMinutesSlot) return true;
+    return /minute/i.test(decodeNick(att.MediaNickName));
+}
+
+export function collectPdfAttachments(event: ChampdsEvent): { att: ChampdsAttachment; fromMinutesSlot: boolean }[] {
+    const seen = new Map<number, { att: ChampdsAttachment; fromMinutesSlot: boolean }>();
+    for (const subject of mapSubjects(event)) {
+        for (const att of subject.attachments) {
+            seen.set(att.CustomerMediaID, { att, fromMinutesSlot: false });
+        }
+    }
+    for (const att of event.Minutes?.Attachments ?? []) {
+        const prev = seen.get(att.CustomerMediaID);
+        seen.set(att.CustomerMediaID, { att: prev?.att ?? att, fromMinutesSlot: true });
+    }
+    return [...seen.values()];
+}
+
 export async function ingestEvent(
     deps: IngestEventDeps,
     input: { event: ChampdsEvent; bodyId: string },
@@ -73,13 +108,18 @@ export async function ingestEvent(
     const detailHash = hashEventDetail(input.event);
     const existing = await deps.oc.getObservations(`champds:event:${eventId}`);
     const mapped = mapSubjects(input.event);
-    const attachments = mapped.flatMap((s) => s.attachments);
+    const pdfs = collectPdfAttachments(input.event);
 
     const mediaObs = await Promise.all(
-        attachments.map((a) => deps.oc.getObservations(`champds:media:${a.CustomerMediaID}`)),
+        pdfs.map((row) => deps.oc.getObservations(`champds:media:${row.att.CustomerMediaID}`)),
     );
-    const allMediaKnown = attachments.every((_, i) => mediaObs[i].length > 0);
-    if (existing[0]?.contentHash === detailHash && allMediaKnown) {
+    const allMediaKnown = pdfs.every((_, i) => mediaObs[i].length > 0);
+    const minutesLike = pdfs.filter((row) => isMinutesLikeAttachment(row.att, row.fromMinutesSlot));
+    const votesObs = await Promise.all(
+        minutesLike.map((row) => deps.oc.getObservations(`champds:votes:${row.att.CustomerMediaID}`)),
+    );
+    const allVotesKnown = minutesLike.every((_, i) => votesObs[i].length > 0);
+    if (existing[0]?.contentHash === detailHash && allMediaKnown && allVotesKnown) {
         return { meetingId, action: 'skipped', subjectCount: mapped.length };
     }
 
@@ -89,14 +129,21 @@ export async function ingestEvent(
     }
 
     const urlsByMediaId = new Map<number, string>();
-    for (const att of attachments) {
+    const pendingExtract: {
+        att: ChampdsAttachment;
+        fromMinutesSlot: boolean;
+        key: string;
+        bytes?: Uint8Array;
+    }[] = [];
+    for (const { att, fromMinutesSlot } of pdfs) {
         const key = objectKey(deps.cityId, eventId, att);
         const already = await deps.mirror.exists(key);
+        let bytes: Uint8Array | undefined;
         const put = already
             ? { key, url: publicUrl(deps.publicFilesBaseUrl, deps.s3Bucket, key) }
             : await deps.mirror.putPdf({
                 key,
-                body: await deps.champds.downloadPdf(att),
+                body: (bytes = await deps.champds.downloadPdf(att)),
                 contentType: 'application/pdf',
             });
         urlsByMediaId.set(att.CustomerMediaID, put.url);
@@ -105,6 +152,9 @@ export async function ingestEvent(
             contentHash: `${att.MediaFileName}:${att.SizeBytes}`,
             meetingId,
         });
+        if (isMinutesLikeAttachment(att, fromMinutesSlot)) {
+            pendingExtract.push({ att, fromMinutesSlot, key, bytes });
+        }
     }
 
     if (mapped.length > 0) {
@@ -119,6 +169,24 @@ export async function ingestEvent(
                     .filter((u): u is string => Boolean(u)),
             })),
         );
+    }
+
+    // After this meeting's subjects exist so same-meeting Minutes can match them.
+    const apply = deps.applyMinutesPdf ?? applyMinutesPdf;
+    const extract = deps.extractPdfText ?? extractPdfText;
+    for (const item of pendingExtract) {
+        try {
+            await apply({ extractPdfText: extract, oc: deps.oc }, {
+                pdfBytes: item.bytes ?? await deps.mirror.get(item.key),
+                mediaId: item.att.CustomerMediaID,
+                nickname: decodeNick(item.att.MediaNickName),
+                sourceMeetingId: meetingId,
+                administrativeBodyId: input.bodyId,
+                fromMinutesSlot: item.fromMinutesSlot,
+            });
+        } catch (err) {
+            console.error(`extract votes media ${item.att.CustomerMediaID} failed`, err);
+        }
     }
 
     const firstPdf = mapped.flatMap((s) => s.attachments)[0];
