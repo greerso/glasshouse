@@ -29,13 +29,13 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [x] Vote extraction from minutes PDFs (named Yay/Nay → SubjectVote; unreviewed badge). Transcript path still out.
 - [ ] Vote review queue for *ongoing* meetings (full review before publish) — backfill already publishes unreviewed
 - [ ] Backfill Nov 2022→present, newest-first, $500 cap w/ reassess at 20 videos
-- [ ] Elections page (candidate list, historical results)
+- [ ] Elections page (candidate list, historical results) — stub plan `docs/superpowers/plans/2026-08-18-elections-stub.md` (seats only until WCEC list)
 - [ ] 10-meeting accuracy audit; quiet launch w/ About/methodology/corrections/redaction pages
 
 ## Phase 2 — scrutiny features (weeks 6–9)
 - [ ] Flags engine + applicability table + methodology pages
 - [ ] Digest drafter → listmonk (weekly + T-48h preview)
-- [ ] RSS + iCal; people-page vote/attendance stats
+- [ ] RSS + iCal; people-page vote/attendance stats — vote feed plan `docs/superpowers/plans/2026-08-18-vote-feed.md` (after elections stub is live)
 - [ ] Backups: nightly pg_dump + rclone offsite; restore drill (launch gate)
 - [ ] security-checker pass; PUBLIC LAUNCH + press outreach (before early voting ~Oct 14)
 

@@ -2,7 +2,7 @@
 
 **Parent:** `docs/superpowers/specs/2026-08-16-glasshouse-design.md`  
 **Approved decisions (chat, 2026-08-18):** ship both; elections first; seats-only candidate block until WCEC publishes names; civic feed (not a social network); upcoming items are agendas, not “upcoming votes.”  
-**Status:** draft for user review (critical-assessment findings applied 2026-08-18)
+**Status:** approved 2026-08-18. Plans: `docs/superpowers/plans/2026-08-18-elections-stub.md`, `docs/superpowers/plans/2026-08-18-vote-feed.md`.
 
 ## Goal
 
