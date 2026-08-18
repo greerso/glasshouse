@@ -26,7 +26,8 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 ## Phase 1 — ingestion + backfill + elections (weeks 3–5)
 - [x] `glasshouse-ingest`: ChampDS document-only poller live (meetings + subjects + PDF mirror + observations). Town-site poller / transcription trigger still out.
 - [ ] Town-site poller (late-agenda observations) — not in the ChampDS ingest plan
-- [ ] Vote extraction (roll-call > transcript > voice-vote inference rule) + review queue
+- [x] Vote extraction from minutes PDFs (named Yay/Nay → SubjectVote; unreviewed badge). Transcript path still out.
+- [ ] Vote review queue for *ongoing* meetings (full review before publish) — backfill already publishes unreviewed
 - [ ] Backfill Nov 2022→present, newest-first, $500 cap w/ reassess at 20 videos
 - [ ] Elections page (candidate list, historical results)
 - [ ] 10-meeting accuracy audit; quiet launch w/ About/methodology/corrections/redaction pages
