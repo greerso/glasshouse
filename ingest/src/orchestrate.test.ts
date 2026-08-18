@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { ingestEvent } from './orchestrate.ts';
-import type { ChampdsEvent } from './champds/types.ts';
+import { ingestEvent, runCycle } from './orchestrate.ts';
+import type { ChampdsEvent, ChampdsListEvent } from './champds/types.ts';
 
 const fixture: ChampdsEvent = JSON.parse(
     readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../docs/research/champds/event-390.json'), 'utf8'),
@@ -175,6 +175,61 @@ test('agenda-less event creates and releases the meeting without POSTing subject
     assert.equal(h.calls.filter((c) => c.op === 'upsertSubjects').length, 0);
     assert.equal(h.calls.some((c) => c.op === 'release' && c.payload === 'champds-389'), true);
     assert.ok(h.calls.some((c) => c.op === 'obs' && (c.payload as { source: string }).source === 'champds:event:389'));
+});
+
+function listRow390(): ChampdsListEvent {
+    return {
+        CustomerEventID: 390,
+        EventTitle: fixture.Event.EventTitle,
+        EventDescription: fixture.Event.EventDescription,
+        EventDateTimeUTC: fixture.Event.EventDateTimeUTC,
+    };
+}
+
+test('runCycle on a fresh process still getEvents 390 when votes obs is missing', async () => {
+    const h = collect();
+    await h.oc.upsertObservation({
+        source: 'champds:event:390',
+        contentHash: 'already',
+        meetingId: 'aug11_2026',
+    });
+    const getEventIds: number[] = [];
+    const champds = {
+        ...h.champds,
+        async listGroup(groupId: number) {
+            return groupId === 1 ? [listRow390()] : [];
+        },
+        async getEvent(eventId: number) {
+            getEventIds.push(eventId);
+            return fixture;
+        },
+    };
+    const listHashByEvent = new Map<number, string>();
+    const cycleDeps = {
+        cfg: {
+            backfillSince: '2022-11-01T00:00:00.000Z',
+            publicFilesBaseUrl: h.publicFilesBaseUrl,
+            s3Bucket: h.s3Bucket,
+        },
+        champds,
+        oc: h.oc,
+        mirror: h.mirror,
+        cityId: 'thompsons-station',
+        listHashByEvent,
+    };
+
+    await runCycle(cycleDeps);
+    assert.deepEqual(getEventIds, [390]);
+
+    await h.oc.upsertObservation({
+        source: 'champds:votes:4672',
+        contentHash: '1:abc',
+        meetingId: 'aug11_2026',
+    });
+    getEventIds.length = 0;
+    assert.ok(listHashByEvent.has(390));
+    await runCycle(cycleDeps);
+    assert.deepEqual(getEventIds, []);
 });
 
 test('a new event POSTs champds-{id} unreleased, then releases after subjects', async () => {

@@ -220,13 +220,6 @@ export async function ingestEvent(
 
 export async function runCycle(deps: CycleDeps): Promise<CycleSummary> {
     const sinceMs = eventInstant(deps.cfg.backfillSince);
-    const observations = await deps.oc.getObservations();
-    const observedEvents = new Set(
-        observations
-            .filter((o) => o.source.startsWith('champds:event:'))
-            .map((o) => o.source.slice('champds:event:'.length)),
-    );
-
     const summary: CycleSummary = { processed: 0, skipped: 0, failed: 0 };
 
     for (const group of CHAMPDS_GROUPS) {
@@ -238,11 +231,9 @@ export async function runCycle(deps: CycleDeps): Promise<CycleSummary> {
             const eventId = row.CustomerEventID;
             const listHash = hashEventListRow(row);
             const prev = deps.listHashByEvent.get(eventId);
-            const hasObs = observedEvents.has(String(eventId));
-            const hashChanged = prev !== undefined && prev !== listHash;
-
-            if (hasObs && !hashChanged) {
-                deps.listHashByEvent.set(eventId, listHash);
+            // Fresh process (prev undefined) always reaches ingestEvent.
+            // After listHash is populated, skip only when it is unchanged.
+            if (prev !== undefined && prev === listHash) {
                 summary.skipped += 1;
                 continue;
             }
