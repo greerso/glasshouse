@@ -20,7 +20,7 @@
 | T12 | DocumentCenter GET 29565–29900 | — | 2026-09-06 | 36 live, all ≤ 29624. No candidate list. |
 | T13 | https://www.williamsoncounty-tn.gov/Search?searchPhrase=… | 200 | 2026-09-06 | JS shell only to curl; contributed nothing this pass. |
 | T14 | williamsonherald.com `article_4779d6c9-…` | 200 | 2026-09-06 | Secondary. Published **2026-04-16**; covers the Aug 6 county primary (61 candidates). No municipal filer. |
-| T15 | williamsonherald.com `article_e7c1b28c-7204-11ef-…` | 200 | 2026-09-06 | Secondary. Published **2024-09-13**; the Nov 5 **2024** election. Precedent for the mid-September approve-and-early-vote meeting. |
+| T15 | williamsonherald.com `article_e7c1b28c-7204-11ef-…` | 200 | 2026-09-06 | Secondary. Published **2024-09-13** reporting a **Thursday, September 12, 2024** meeting; the Nov 5 **2024** election. Precedent for the mid-September approve-and-early-vote meeting. |
 
 Prior recaptures below.
 

@@ -59,7 +59,7 @@ Williamson County"*, `datePublished` **2026-04-16** — it covers the **August 6
 ("61 candidates"), not the November municipal ballot, and names no Thompson's Station municipal
 filer. A separate Herald piece that a web search paraphrased as WCEC approving qualified local
 candidates for Fairview / Nolensville / Thompson's Station is **from 2024-09-13** and covers the
-November 5, **2024** election. Neither goes near the table.
+November 5, **2024** election (the meeting it reports was Thursday, September 12, 2024). Neither goes near the table.
 
 ## Certification status
 

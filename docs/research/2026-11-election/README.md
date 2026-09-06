@@ -11,7 +11,7 @@ Qualifying closed **Thursday, August 20, 2026, 12:00 noon** (T.C.A. § 2-5-101(a
 
 **No certified (or even unofficial) November 2026 municipal candidate list exists on any official site as of the 2026-09-06 recapture**, 17 days after qualifying closed. Empty is still the correct candidate table. Observation files: `candidates-observed-2026-08-17.md`, `candidates-observed-2026-08-18.md`, `candidates-observed-2026-09-01.md`, `candidates-observed-2026-09-06.md`.
 
-**Certification is now scheduled.** The Williamson County Election Commission meets **Friday, September 11, 2026 at 1:00 p.m.** (405 Downs Blvd, Franklin). New Business item 1 on the posted agenda is *"Approve the qualified municipal candidates for the City of Fairview, Town of Nolensville, & Town of Thompson's Station appearing on the November 3, 2026, State General Election ballot."* Item 2 sets November early-voting locations, dates and hours. The agenda names no candidates. WCEC did the same pairing on 2024-09-13 for the November 2024 election, so this is the ordinary venue, not an irregularity.
+**Certification is now scheduled.** The Williamson County Election Commission meets **Friday, September 11, 2026 at 1:00 p.m.** (405 Downs Blvd, Franklin). New Business item 1 on the posted agenda is *"Approve the qualified municipal candidates for the City of Fairview, Town of Nolensville, & Town of Thompson's Station appearing on the November 3, 2026, State General Election ballot."* Item 2 sets November early-voting locations, dates and hours. The agenda names no candidates. WCEC did the same pairing at its meeting on Thursday, September 12, 2024 (reported 2024-09-13) ahead of the November 2024 election, so this is the ordinary venue, not an irregularity.
 
 ## What was searched
 

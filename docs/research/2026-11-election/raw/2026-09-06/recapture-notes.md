@@ -59,7 +59,8 @@ qualification dispute in Thompson's Station.
   the commission approved locations and polling hours for seven early voting centers…").
   Do not treat it as 2026. It is, however, a useful precedent: WCEC approves the qualified
   local candidates and the early-voting locations together at a mid-September meeting — exactly
-  the shape of the Sep 11, 2026 agenda.
+  the shape of the Sep 11, 2026 agenda. Note the meeting itself was **Thursday, September 12,
+  2024** ("met Thursday", published Friday 2024-09-13); the article date is not the meeting date.
 - No 2026 municipal names were found in any news source.
 
 **Zero names. JSON `candidates` left `[]`. No name rebuild.**
