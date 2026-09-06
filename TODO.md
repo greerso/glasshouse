@@ -6,7 +6,9 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [x] **2026-08-17:** pre-deadline WCEC capture saved in `docs/research/2026-11-election/` (no names yet — qualifying still open).
 - [x] **2026-08-18:** mid-window recapture — still zero names. Observation: `docs/research/2026-11-election/candidates-observed-2026-08-18.md`. JSON left `candidates: []`; no rebuild. #2
 - [x] **Thu Aug 20 / Fri Aug 21 / Mon Sep 1:** recapture qualified Nov 2026 municipal list. WCEC still has **zero published names** (observation `candidates-observed-2026-09-01.md`). JSON left `candidates: []`. #2
-- [ ] **Email WCEC** (issue #2 step 4): chad.gray@williamsoncounty-tn.gov / (615) 790-5711 — ask for petitions filed / qualified names for TS Mayor + Alderman. Save the written reply. Then copy into JSON and rebuild. #2
+- [x] **2026-09-06:** recapture — still zero names, but **WCEC certifies the list Fri Sep 11, 2026, 1:00 p.m.** (posted agenda, New Business item 1: approve qualified municipal candidates for Fairview / Nolensville / Thompson's Station). Observation `candidates-observed-2026-09-06.md`. JSON left `candidates: []`. #2
+- [ ] **Fri Sep 11, 2026 after ~2:30 p.m. CDT:** recapture the approved list (Public Notices, Candidate Information, Sep 11 minutes, DocumentCenter IDs **above 29624**), plus Nov 3 sample ballot + approved early-voting locations. #2
+- [ ] **Tue Sep 8, 2026 — email WCEC** (issue #2 step 4): chad.gray@williamsoncounty-tn.gov / (615) 790-5711 — ask for petitions filed / qualified names for TS Mayor + Alderman and whether the approved list gets posted after Sep 11. Save the written reply. Office closed Mon Sep 7 (Labor Day). Then copy into JSON and rebuild. #2
 - [ ] User decision (pre-public-launch): TN attorney consult re LLC + media-liability insurance.
 
 ## Phase 0 — bring-up (weeks 1–2)
@@ -32,7 +34,7 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [ ] Backfill Nov 2022→present, newest-first, $500 cap w/ reassess at 20 videos
 - [x] Elections stub live at `/thompsons-station/elections` (seats only; `candidates: []` until WCEC list)
 - [x] Vote feed is US home (`/` + `/votes`); nav Votes / Elections / People / Archive; meetings at `/meetings`; default `body=all`. Live `glasshouse-web@0d8bff3f`
-- [ ] Put WCEC-qualified names on `/elections` after WCEC (or Chad Gray reply) names people (never invent names; never read `Person`) — #2. Sep 1 recapture still `candidates: []`.
+- [ ] Put WCEC-qualified names on `/elections` after WCEC (or Chad Gray reply) names people (never invent names; never read `Person`) — #2. Sep 6 recapture still `candidates: []`; certification is Sep 11.
 - [ ] Optional: strip leftover OC footer chrome on US realm (`hello@opencouncil.gr` + OC socials) — #3
 - [ ] 10-meeting accuracy audit; quiet launch w/ About/methodology/corrections/redaction pages
 

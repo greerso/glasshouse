@@ -1,5 +1,31 @@
 # Sources — 2026-11 Williamson / Thompson's Station municipal election
 
+## Recapture — 2026-09-06 (~16:05 America/Chicago)
+
+**Certification is scheduled.** A new WCEC meeting appeared on the Agenda Center: **Friday, September 11, 2026, 1:00 p.m.**, New Business item 1 = approve the qualified municipal candidates for Fairview, Nolensville and Thompson's Station on the November 3, 2026 ballot. The agenda names no one. Everything else unchanged. DocumentCenter GET 29565–29900: 36 live IDs, all ≤ 29624, no candidate list. JSON `candidates` left `[]`; `lastCapturedAt` / `sourceNote` updated.
+
+| # | URL | HTTP | Fetched | What it contains |
+| --- | --- | --- | --- | --- |
+| T1 | https://www.williamsoncounty-tn.gov/40/Election-Commission | 200 | 2026-09-06 | Unchanged. Aug 6 material only. |
+| T2 | https://www.williamsoncounty-tn.gov/1743/Candidate-Information | 200 | 2026-09-06 | Unchanged. County list May/August 2026 only. |
+| T3 | https://www.williamsoncounty-tn.gov/619/Public-Notices-Press-Releases | 200 | 2026-09-06 | Unchanged. Three Nov municipal notices + Aug 21 meeting. Sep 11 notice not posted here. |
+| T4 | https://www.williamsoncounty-tn.gov/2173/Sample-Ballots | 200 | 2026-09-06 | August 6 only (29485/29486/29487). No November 3 sample ballot. |
+| T5 | https://www.williamsoncounty-tn.gov/1576/Voting-Information | 200 | 2026-09-06 | Nov 3 absentee form 29561; no candidate list. |
+| T6 | https://www.williamsoncounty-tn.gov/AgendaCenter/Election-Commission-5 | 200 | 2026-09-06 | **New `Sep 11, 2026` row.** Aug 21 row unchanged. |
+| T7 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Agenda/_09112026-813 | 200 | 2026-09-06 | **New.** Sep 11 agenda, image PDF 61,659 bytes, SHA1 `b1218170…`. Approve qualified municipal candidates + early voting. **No names.** |
+| T8 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Minutes/_08212026-800 | 200 | 2026-09-06 | SHA1 `a3dfd2c7…` — byte-identical to 09-01. Still the public-notice agenda. Aug 21 minutes are Sep 11 Old Business item 1. |
+| T9 | https://thompsons-station.gov/elections-and-voting | 200 | 2026-09-06 | Unchanged. Sitting BOMA; next election Nov 2026. |
+| T10 | https://thompsons-station.gov/announcements | 200 | 2026-09-06 | Newest Sep 4, 2026. No candidate or election posting. |
+| T11 | https://sos.tn.gov/elections/2026-candidate-lists | 200 | 2026-09-06 | State/federal only (curl w/ browser UA; WebFetch 403). |
+| T12 | DocumentCenter GET 29565–29900 | — | 2026-09-06 | 36 live, all ≤ 29624. No candidate list. |
+| T13 | https://www.williamsoncounty-tn.gov/Search?searchPhrase=… | 200 | 2026-09-06 | JS shell only to curl; contributed nothing this pass. |
+| T14 | williamsonherald.com `article_4779d6c9-…` | 200 | 2026-09-06 | Secondary. Published **2026-04-16**; covers the Aug 6 county primary (61 candidates). No municipal filer. |
+| T15 | williamsonherald.com `article_e7c1b28c-7204-11ef-…` | 200 | 2026-09-06 | Secondary. Published **2024-09-13**; the Nov 5 **2024** election. Precedent for the mid-September approve-and-early-vote meeting. |
+
+Prior recaptures below.
+
+---
+
 ## Recapture — 2026-09-01 (~09:34 America/Chicago)
 
 Post-qualifying and post-withdrawal. Same official URLs re-fetched. No November municipal name list. Aug 21 agenda revised (new PDF, still no names). Minutes URL still the public-notice agenda. DocumentCenter GET 29565–29700: no candidate list. JSON `candidates` left `[]`; `lastCapturedAt` updated.
