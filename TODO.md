@@ -4,8 +4,9 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 
 ## Time-critical (independent of build)
 - [x] **2026-08-17:** pre-deadline WCEC capture saved in `docs/research/2026-11-election/` (no names yet — qualifying still open).
-- [ ] **Thu Aug 20, 2026 after noon + Fri Aug 21 WCEC meeting:** recapture certified/qualified Nov 2026 municipal list (TS Mayor + 2 alderman).
-- [ ] **Thu Aug 27, 2026 after noon:** recapture ballot-final list after withdrawal.
+- [x] **2026-08-18:** mid-window recapture — still zero names. Observation: `docs/research/2026-11-election/candidates-observed-2026-08-18.md`. JSON left `candidates: []`; no rebuild. #2
+- [x] **Thu Aug 20 / Fri Aug 21 / Mon Sep 1:** recapture qualified Nov 2026 municipal list. WCEC still has **zero published names** (observation `candidates-observed-2026-09-01.md`). JSON left `candidates: []`. #2
+- [ ] **Email WCEC** (issue #2 step 4): chad.gray@williamsoncounty-tn.gov / (615) 790-5711 — ask for petitions filed / qualified names for TS Mayor + Alderman. Save the written reply. Then copy into JSON and rebuild. #2
 - [ ] User decision (pre-public-launch): TN attorney consult re LLC + media-liability insurance.
 
 ## Phase 0 — bring-up (weeks 1–2)
@@ -29,13 +30,16 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [x] Vote extraction from minutes PDFs (named Yay/Nay → SubjectVote; unreviewed badge). Transcript path still out.
 - [ ] Vote review queue for *ongoing* meetings (full review before publish) — backfill already publishes unreviewed
 - [ ] Backfill Nov 2022→present, newest-first, $500 cap w/ reassess at 20 videos
-- [ ] Elections page (candidate list, historical results) — stub plan `docs/superpowers/plans/2026-08-18-elections-stub.md` (seats only until WCEC list)
+- [x] Elections stub live at `/thompsons-station/elections` (seats only; `candidates: []` until WCEC list)
+- [x] Vote feed is US home (`/` + `/votes`); nav Votes / Elections / People / Archive; meetings at `/meetings`; default `body=all`. Live `glasshouse-web@0d8bff3f`
+- [ ] Put WCEC-qualified names on `/elections` after WCEC (or Chad Gray reply) names people (never invent names; never read `Person`) — #2. Sep 1 recapture still `candidates: []`.
+- [ ] Optional: strip leftover OC footer chrome on US realm (`hello@opencouncil.gr` + OC socials) — #3
 - [ ] 10-meeting accuracy audit; quiet launch w/ About/methodology/corrections/redaction pages
 
 ## Phase 2 — scrutiny features (weeks 6–9)
 - [ ] Flags engine + applicability table + methodology pages
 - [ ] Digest drafter → listmonk (weekly + T-48h preview)
-- [ ] RSS + iCal; people-page vote/attendance stats — vote feed plan `docs/superpowers/plans/2026-08-18-vote-feed.md` (after elections stub is live)
+- [ ] RSS + iCal; people-page vote/attendance stats
 - [ ] Backups: nightly pg_dump + rclone offsite; restore drill (launch gate)
 - [ ] security-checker pass; PUBLIC LAUNCH + press outreach (before early voting ~Oct 14)
 

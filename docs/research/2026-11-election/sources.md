@@ -1,5 +1,60 @@
 # Sources — 2026-11 Williamson / Thompson's Station municipal election
 
+## Recapture — 2026-09-01 (~09:34 America/Chicago)
+
+Post-qualifying and post-withdrawal. Same official URLs re-fetched. No November municipal name list. Aug 21 agenda revised (new PDF, still no names). Minutes URL still the public-notice agenda. DocumentCenter GET 29565–29700: no candidate list. JSON `candidates` left `[]`; `lastCapturedAt` updated.
+
+| # | URL | HTTP | Fetched | What it contains |
+| --- | --- | --- | --- | --- |
+| S1 | https://www.williamsoncounty-tn.gov/40/Election-Commission | 200 | 2026-09-01 | Unchanged. Aug 6 list only. |
+| S2 | https://www.williamsoncounty-tn.gov/1743/Candidate-Information | 200 | 2026-09-01 | Unchanged. May/August 2026 county list only. |
+| S3 | https://www.williamsoncounty-tn.gov/619/Public-Notices-Press-Releases | 200 | 2026-09-01 | Unchanged. Three Nov municipal notices; no name list. |
+| S4 | https://www.williamsoncounty-tn.gov/2173/Sample-Ballots | 200 | 2026-09-01 | August 6 sample ballots only. |
+| S5 | https://www.williamsoncounty-tn.gov/AgendaCenter/ElectionCommission-5 | 200 | 2026-09-01 | Latest meeting still Fri Aug 21. No Sep WCEC meeting. |
+| S6 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Agenda/_08212026-800 | 200 | 2026-09-01 | **Revised** agenda PDF (94,227 bytes, created Aug 20 11:18). Call for Elections; no names. |
+| S7 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Minutes/_08212026-800 | 200 | 2026-09-01 | Still public-notice agenda, not post-meeting minutes. |
+| S8 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29556/Public-Notice-Thompsons-Station-November-2026 | 200 | 2026-09-01 | TS notice. SHA1 unchanged. Offices + deadlines. No names. |
+| S9 | https://thompsons-station.gov/elections-and-voting | 200 | 2026-09-01 | Next election Nov 2026. Sitting BOMA. No 2026 filers. |
+| S10 | https://thompsons-station.gov/boards-commissions/board-mayor-alderman | 200 | 2026-09-01 | Stover, Alexander, Whitmer, White, King. |
+| S11 | https://sos.tn.gov/elections/2026-candidate-lists | 200 | 2026-09-01 | State/federal only. |
+| S12 | https://www.williamsonvotes.net/ | FAIL | 2026-09-01 | SSL fail. |
+| S13 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29599 | 200 | 2026-09-01 | County Commission Sep 9 special meeting (hospital). Not WCEC. |
+
+Prior recapture below.
+
+---
+
+## Recapture — 2026-08-18 (~17:18 America/Chicago; first pass ~17:05)
+
+Same official URLs re-fetched. No new November municipal name list. CivicEngage HEAD 404s on live files; GET of 29565–29620 found only 29567 (GRT agenda) and 29569 (flu memo). JSON not updated.
+
+| # | URL | HTTP | Fetched | What it contains |
+| --- | --- | --- | --- | --- |
+| R1 | https://www.williamsoncounty-tn.gov/40/Election-Commission | 200 | 2026-08-18 | Unchanged. Aug 6 list only. |
+| R2 | https://www.williamsoncounty-tn.gov/1743/Candidate-Information | 200 | 2026-08-18 | Unchanged. May/August 2026 county list only. |
+| R3 | https://www.williamsoncounty-tn.gov/619/Public-Notices-Press-Releases | 200 | 2026-08-18 | Unchanged. Three Nov municipal notices; no name list. |
+| R4 | https://www.williamsoncounty-tn.gov/2173/Sample-Ballots | 200 | 2026-08-18 | August 6 sample ballots only. |
+| R5 | https://www.williamsoncounty-tn.gov/AgendaCenter/ElectionCommission-5 | 200 | 2026-08-18 | Next meeting Fri Aug 21. Minutes link is the Aug 14 public-notice agenda. |
+| R6 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Agenda/_08212026-800 | 200 | 2026-08-18 | Agenda PDF byte-identical to 08-17 capture. |
+| R7 | https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Minutes/_08212026-800 | 200 | 2026-08-18 | Public-notice agenda (not post-meeting minutes). Call for Elections; no names. |
+| R8 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29556/Public-Notice-Thompsons-Station-November-2026 | 200 | 2026-08-18 | TS notice. Offices + deadlines. No names. |
+| R9 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29353 | 200 | 2026-08-18 | Aug 6 state + Fairview Municipal Court Clerk. Not Nov municipal. |
+| R10 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29313 | 200 | 2026-08-18 | May/August 2026 county list. Not Nov municipal. |
+| R11 | https://www.williamsoncounty-tn.gov/Search/Results?searchPhrase=Candidate+List+November+2026 | 200 | 2026-08-18 | Hits are notices/calendar/Aug 6 lists. No Nov municipal name list. |
+| R12 | https://sos.tn.gov/elections/2026-candidate-lists | 200 | 2026-08-18 | State/federal only. |
+| R13 | https://thompsons-station.gov/elections-and-voting | 200 | 2026-08-18 | Next election Nov 2026. Sitting BOMA. No 2026 filers. |
+| R14 | https://thompsons-station.gov/announcements | 200 | 2026-08-18 | Ordinances / workshops / jobs. No candidate posting. |
+| R15 | https://www.williamsoncounty-tn.gov/2142/Election-Calendar | 200 | 2026-08-18 | Calendar PDF. TS Mayor & Two Alderman; qualify Aug 20 noon. |
+| R16 | https://www.williamsonvotes.net/ | FAIL | 2026-08-18 | Same as 08-17. |
+| R17 | https://sos.tn.gov/elections/calendar | 403 | 2026-08-18 | CloudFront blocked this fetch. SOS candidate-lists page succeeded. |
+| R18 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29567 | 200 | 2026-08-18 17:18 | GRT Agenda 8-12-26. Not elections. Missed at 17:05 because HEAD 404s. |
+| R19 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29569 | 200 | 2026-08-18 17:18 | County employee flu-vaccine memo. Not elections. |
+| R20 | https://www.williamsoncounty-tn.gov/DocumentCenter/View/29382 | 200 | 2026-08-18 17:18 | “2026 NOVEMBER” = circuit court schedule. Not a candidate list. |
+
+First-capture table below is the 2026-08-17 inventory (unchanged).
+
+---
+
 Capture date: **2026-08-17**. HTTP status is the result of this session's fetch (successful page/PDF retrieval recorded as 200). Times are the capture day; fetches ran during the 2026-08-17 research session (America/Chicago).
 
 ## Official — primary

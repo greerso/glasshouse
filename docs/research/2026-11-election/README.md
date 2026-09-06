@@ -1,14 +1,15 @@
-# 2026-11-03 municipal election capture — 2026-08-17
+# 2026-11-03 municipal election capture
 
-**Captured:** 2026-08-17  
+**Last recapture:** 2026-09-01 (~09:34 America/Chicago)  
+**First capture:** 2026-08-17  
 **Scope:** What the Williamson County Election Commission (TN), Tennessee SOS, and Town of Thompson's Station have published about the Tuesday, November 3, 2026 municipal election, especially Thompson's Station (Mayor + 2 alderman).  
-**Not done:** site features, candidate invention, git commit.
+**Not done:** site features, candidate invention. JSON left at `candidates: []`; no name rebuild. Qualifying closed Thu Aug 20 noon; withdrawal closed Thu Aug 27 noon.
 
-## Certification is still pending
+## Certification is still unpublished
 
-Qualifying for November municipal offices is **still open**. Official close is **Thursday, August 20, 2026, 12:00 noon** prevailing time (T.C.A. § 2-5-101(a)). Withdrawal is **Thursday, August 27, 2026, 12:00 noon** (T.C.A. § 2-5-204(b)(1)).
+Qualifying closed **Thursday, August 20, 2026, 12:00 noon** (T.C.A. § 2-5-101(a)). Withdrawal closed **Thursday, August 27, 2026, 12:00 noon** (T.C.A. § 2-5-204(b)(1)).
 
-**No certified (or even unofficial) November 2026 municipal candidate list exists on any official site as of this capture.** That is expected three days before the noon deadline. Empty is the correct candidate table.
+**No certified (or even unofficial) November 2026 municipal candidate list exists on any official site as of the 2026-09-01 recapture**, 12 days after qualifying closed. Empty is still the correct candidate table. Observation files: `candidates-observed-2026-08-17.md`, `candidates-observed-2026-08-18.md`, `candidates-observed-2026-09-01.md`.
 
 ## What was searched
 
@@ -45,7 +46,7 @@ Secondary (not used for the candidate table):
 | TS candidate must meet T.C.A. § 8-18-101 and be a resident of the town for one year preceding the election | WCEC Qualifications |
 | Sitting BOMA: Mayor Brian Stover; Vice Mayor Shaun Alexander; Aldermen Bob Whitmer, Kreis White, Harry King | Town elections page (incumbents, **not** 2026 filers) |
 | 2022 result recorded by the town: Stover mayor (4 yr); Whitmer alderman (4 yr) | Town elections page (history only) |
-| Next scheduled WCEC meeting: **Friday, August 21, 2026** (amended Aug 14) | Agenda Center; public notices |
+| WCEC meeting Friday, August 21, 2026 | Agenda Center. Revised agenda posted (created Aug 20 11:18 CDT). Call for Elections; no names. Minutes URL is still the public-notice agenda. |
 | Sample ballots on WCEC site: August 6, 2026 only | Sample Ballots page |
 | SOS candidate lists: state/federal only | sos.tn.gov/elections/2026-candidate-lists |
 
@@ -65,20 +66,17 @@ A January 2026 *Williamson Herald* article said Stover, Alexander, and Whitmer s
 
 ## Exact follow-up
 
-### 1. Thursday, August 20, 2026, after 12:00 noon (and Friday, August 21)
+### 1. Done — Thursday Aug 20 / Friday Aug 21 / Monday Sep 1
 
-Qualifying closes at noon Aug 20. Recapture immediately after noon and again after the Friday meeting:
+Qualifying and withdrawal are closed. Recapture 2026-09-01 found **no published names**. Revised Aug 21 agenda still has no names. Post-meeting minutes are not posted.
 
-1. Reload [WCEC home](https://www.williamsoncounty-tn.gov/40/Election-Commission), [Candidate Information](https://www.williamsoncounty-tn.gov/1743/Candidate-Information), and [Public Notices](https://www.williamsoncounty-tn.gov/619/Public-Notices-Press-Releases) for a new DocumentCenter file (expect a name like "Candidate List-November 3, 2026" or "Qualified Candidates" for Fairview / Nolensville / Thompson's Station).
-2. Attend or fetch the **Friday, August 21, 2026** Election Commission packet and, when posted, minutes:  
-   https://www.williamsoncounty-tn.gov/AgendaCenter/ViewFile/Agenda/_08212026-800  
-   The live agenda mentions Town of Thompson's Station municipal offices on the Nov 3 ballot. This is the first public meeting after the noon deadline and the likeliest certification venue.
-3. If nothing is posted Friday, call WCEC at (615) 790-5711 or email chad.gray@williamsoncounty-tn.gov and ask for the list of petitions filed / qualified names for Thompson's Station Mayor and Alderman. Save the written reply.
-4. Write a new dated file `candidates-observed-2026-08-21.md` (or the actual fetch date). Do not edit today's zero-name table to invent names.
+### 2. Now — email WCEC
 
-### 2. Thursday, August 27, 2026, after 12:00 noon
+Issue #2 step 4 is in force. Email chad.gray@williamsoncounty-tn.gov (or call (615) 790-5711) and ask for the petitions-filed / qualified names for Thompson's Station Mayor and Alderman. Save the written reply as a raw capture. Do not put names on `/elections` until that reply or a WCEC document names them.
 
-Withdrawal closes. Recapture the **ballot-final** list (anyone who qualified Aug 20 and did not withdraw). That is the list the elections page should ship. Also check again the week after for a posted sample ballot.
+### 3. When a list appears
+
+Write `candidates-observed-YYYY-MM-DD.md`. Copy exact printed names into `thompsons-station-2026-11.json` (`officeId` `mayor`|`alderman`, `status: qualified`, `sourceUrl`, `sourceDate`) and rebuild. Also check for a posted November sample ballot.
 
 ### 3. Do not treat as certified
 
@@ -94,6 +92,10 @@ docs/research/2026-11-election/
   README.md                                          this file
   sources.md                                         URL / status / one-line inventory
   candidates-observed-2026-08-17.md                  official name table (ZERO names)
+  candidates-observed-2026-08-18.md                  mid-window recapture (ZERO names; 17:18 GET probe)
+  candidates-observed-2026-09-01.md                  post-deadline recapture (ZERO names)
+  raw/2026-08-18/                                    recapture notes + DocumentCenter GET probe
+  raw/2026-09-01/                                    post-deadline notes + revised Aug 21 agenda PDF
   raw/                                               page/PDF text captures (source URL at top of each)
     wcec-public-notice-thompsons-station-november-2026.md
     wcec-public-notice-fairview-november-2026.md
@@ -122,12 +124,14 @@ Binary PDFs (byte-for-byte) are in `raw/pdf/`:
 - `wcec-public-notice-nolensville-november-2026.pdf`
 - `wcec-agenda-aug-21-2026.pdf` (image-based)
 
+`raw/2026-08-18/pdf/wcec-aug21-public-notice-agenda.pdf` is the CivicEngage Minutes URL as of 08-18 (text public notice, not post-meeting minutes).
+
 Text of the three municipal notices and the 2026 calendar is transcribed in `raw/`. The 2026 calendar PDF itself was not a stable DocumentCenter URL at capture time (the calendar page is a CivicEngage wrapper).
 
 ## Confidence
 
-- **High** that no official November municipal candidate list is published today.
-- **High** on offices, dates, and the three municipal notices.
+- **High** that no official November municipal candidate list is published as of 2026-09-01 09:34 (rechecked home, Candidate Information, Public Notices, Sample Ballots, Agenda Center, site search, DocumentCenter GET 29565–29700). Revised Aug 21 agenda has no names. CivicEngage HEAD 404s on live files — do not trust HEAD for this probe.
+- **High** on offices, dates, and the three municipal notices (29556 still offices + deadlines only).
 - **High** that SOS does not list municipal candidates.
-- **Medium** on the exact Aug 21 agenda item wording (image PDF; relies on the official URL's search-index snippet plus the live Agenda Center row).
-- **Open:** petitions may already sit in the WCEC office unpublished. Only the office or a post-noon posting can answer that.
+- **High** on the Aug 21 agenda items (Minutes URL is extractable text: Call for Elections, no names). Agenda PDF unchanged vs 08-17.
+- **Open:** petitions may already sit in the WCEC office unpublished. Only the office or a post-noon Thursday / Friday posting can answer that.
