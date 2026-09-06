@@ -18,10 +18,10 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [x] S3_FORCE_PATH_STYLE + PUBLIC_FILES_BASE_URL for self-hosted MinIO (tasks fork)
 - [x] Fail-closed registration allowlist (incl. petition/notification bypass paths) + AGPL SHA footer (web fork)
 - [x] Compose stack for Openship (7 services, ES schema adapted for self-hosted) — feature/phase0-bringup
-- [ ] **GATE (user):** register glasshouse.town + Cloudflare zone; API keys: Anthropic, ElevenLabs (speech-to-text), pyannote.ai, Mux, Resend, Mapbox, Google geocoding (NO Perplexity needed); confirm openship CLI access to thinkstation
+- [ ] **GATE (user):** register glasshouse.town + Cloudflare zone (confirmed **still unregistered** 2026-09-06 — Identity Digital RDAP returns 404 and no `glasshouse.*` zone exists in the Magnolia Tech Services CF account; site is staged on `glasshouse.greerso.com` meanwhile); API keys: Anthropic, ElevenLabs (speech-to-text), pyannote.ai, Mux, Resend, Mapbox, Google geocoding (NO Perplexity needed); confirm openship CLI access to thinkstation
 - [ ] Openship deploy full stack on thinkstation (project create → service sync → POST /deployments; verify stored model incl. env fidelity)
 - [x] Elasticsearch auth + index bootstrap (pgsync --bootstrap + GRANT); PGSync daemon
-- [ ] Cloudflare Tunnel (glasshouse.town → web, cdn. → MinIO read-only, tasks. → pyannote callbacks); host firewall
+- [ ] Cloudflare Tunnel — **web done on staging** 2026-09-06: `https://glasshouse.greerso.com` → `http://glasshouse-os:3000` (tunnel `magnolia-thinkstation` v51 + proxied CNAME; `openship-glasshouse-web` attached to the `magnolia` net via the `magnolia-mesh-attach` alias map, so it survives redeploys; `NEXTAUTH_URL` updated to match). Still out: `cdn.` → MinIO read-only (`CDN_URL` still points at the nonexistent `cdn.glasshouse.town`), `tasks.` → pyannote callbacks, host firewall, and the swap to the real domain once registered.
 - [x] Seed: superadmin, City, 9 AdministrativeBodies, People/Roles (rosters in spec)
 - [ ] Manual E2E: one meeting (ChampDS MP4) → transcribe → summarize → review UI
 - [ ] Contact Schema Labs (Discord) re first US instance (user action)
