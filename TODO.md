@@ -24,8 +24,9 @@ Spec: `docs/superpowers/specs/2026-08-16-glasshouse-design.md` (approved 2026-08
 - [ ] Cloudflare Tunnel — **web done on staging** 2026-09-06: `https://glasshouse.greerso.com` → `http://glasshouse-os:3000` (tunnel `magnolia-thinkstation` v51 + proxied CNAME; `openship-glasshouse-web` attached to the `magnolia` net via the `magnolia-mesh-attach` alias map, so it survives redeploys; `NEXTAUTH_URL` updated to match). Still out: `cdn.` → MinIO read-only (`CDN_URL` still points at the nonexistent `cdn.glasshouse.town`), `tasks.` → pyannote callbacks, host firewall, and the swap to the real domain once registered.
 - [x] **2026-09-06:** the `us` realm no longer advertises the unregistered `glasshouse.town` — `NEXT_PUBLIC_REALM_DOMAIN` is a Dockerfile build arg (glasshouse-web#1) and the web service env names `glasshouse.greerso.com`, so canonical/hreflang, sitemap, robots, notification emails and the country switcher point somewhere that resolves. Swap both to `glasshouse.town` at the GATE. #6
 - [x] **2026-09-06:** rotated the Postgres password and `NEXTAUTH_SECRET` (exposed in a prior session transcript) and the Elasticsearch `elastic` password (exposed while diagnosing #7).
+- [ ] AGPL footer source link advertises `8844cf05` while the running code is `0d8bff3f` — the service env var shadows the build arg. #8
 - [ ] Openship's stored env is not reproducible from `docker-compose.yml` — `${DB_PASSWORD}`, `${ES_PASSWORD}`, `${MINIO_PASSWORD}` have no source file left, so a `service sync` would blank them. #7
-- [ ] pgsync → Elasticsearch sync has been dead since ~Aug 23 (index stale); auth is fixed, catch-up and a possible `--bootstrap` re-run still to verify. #7
+- [x] **2026-09-06:** pgsync → Elasticsearch auth broke on redeploy (same empty-stored-credential shape as minio); fixed by resetting the cluster password. No catch-up needed — ES `subjects` is at 2002 docs vs 2001 `"Subject"` rows. #7
 - [x] Seed: superadmin, City, 9 AdministrativeBodies, People/Roles (rosters in spec)
 - [ ] Manual E2E: one meeting (ChampDS MP4) → transcribe → summarize → review UI
 - [ ] Contact Schema Labs (Discord) re first US instance (user action)
