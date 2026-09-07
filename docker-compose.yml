@@ -13,7 +13,14 @@ services:
     # context. Prebuild on the thinkstation:
     #   docker build --build-arg USE_LOCAL_DB=false \
     #     --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git -C ../glasshouse-web rev-parse HEAD) \
+    #     --build-arg NEXT_PUBLIC_REALM_DOMAIN=<the host this image will serve> \
     #     -t glasshouse-web:<sha> ../glasshouse-web
+    # NEXT_PUBLIC_REALM_DOMAIN is inlined into the client bundle, so it must
+    # name the deployment's own host (glasshouse.greerso.com on staging) or the
+    # us realm's absolute URLs point at glasshouse.town. Today the entrypoint
+    # runs `next build` at container start, so the service env var is what
+    # actually reaches the build; the arg is what keeps this correct once that
+    # build moves into the image (#4).
     # WEB_IMAGE is interpolated from this project's .env at `service sync`.
     image: ${WEB_IMAGE}
     ports: ["3100:3000"]
