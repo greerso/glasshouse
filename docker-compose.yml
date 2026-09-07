@@ -29,12 +29,16 @@ services:
     #     --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git -C ../glasshouse-web rev-parse HEAD) \
     #     --build-arg NEXT_PUBLIC_REALM_DOMAIN=<the host this image will serve> \
     #     -t glasshouse-web:<sha> ../glasshouse-web
-    # NEXT_PUBLIC_REALM_DOMAIN is inlined into the client bundle, so it must
-    # name the deployment's own host (glasshouse.greerso.com on staging) or the
-    # us realm's absolute URLs point at glasshouse.town. Today the entrypoint
-    # runs `next build` at container start, so the service env var is what
-    # actually reaches the build; the arg is what keeps this correct once that
-    # build moves into the image (#4).
+    # Both NEXT_PUBLIC_* args are inlined into the client bundle by the build,
+    # which now runs at image build time rather than container start (#4), so
+    # the build args are the ONLY source for them and every rebuild must pass
+    # all three. NEXT_PUBLIC_REALM_DOMAIN must name the deployment's own host
+    # (glasshouse.greerso.com on staging) or the us realm's absolute URLs point
+    # at the unregistered glasshouse.town; NEXT_PUBLIC_BUILD_COMMIT_SHA is the
+    # AGPL source link and must be the commit the image was built from (#8).
+    # Neither may be set in the service env store any more: the store used to
+    # win, because the build ran with the container's runtime env, and that is
+    # exactly how the footer came to advertise the wrong commit.
     # WEB_IMAGE is interpolated from this project's .env at `service sync`.
     image: ${WEB_IMAGE}
     ports: ["3100:3000"]
@@ -48,9 +52,9 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-      # The entrypoint runs `next build` at container start — minutes before
-      # the port opens — so give it room before healthcheck failures count.
-      start_period: 10m
+      # The image is prebuilt (#4), so start is `prisma migrate deploy` plus
+      # `next start`. 10m was cover for the old container-start `next build`.
+      start_period: 90s
   tasks:
     # TODO: Openship cannot build sibling ../glasshouse-tasks (same `.`
     # context bug as web). Switch to `image: ${TASKS_IMAGE}` and a

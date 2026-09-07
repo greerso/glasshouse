@@ -115,6 +115,51 @@ pair in the call, so a mixed secret/non-secret update must go through
 `openship api <path> -X PUT`. Existing secret values are recoverable with
 `docker exec <container> printenv <KEY>`.
 
+## Media CDN — cdn-glasshouse.greerso.com
+
+Staging CDN for MinIO, live 2026-09-07 (#5). Replaces `cdn.glasshouse.town`,
+which never resolved because the domain is unregistered.
+
+```
+Cloudflare (proxied CNAME cdn-glasshouse -> <tunnel>.cfargotunnel.com)
+  -> magnolia-thinkstation tunnel (config v53)
+  -> http://glasshouse-minio-os:9000
+```
+
+Four things make it work, and all four are required:
+
+1. `openship-glasshouse-minio` is joined to the `magnolia` network with alias
+   `glasshouse-minio-os`. It is otherwise only on `openship-glasshouse`, and
+   publishes 9000/9001 on loopback only, so cloudflared cannot reach it.
+2. A row in `~/.local/share/magnolia-mesh/aliases`
+   (`openship-glasshouse-minio<TAB>glasshouse-minio-os`) so the attach survives
+   container recreation. A bare `docker network connect` dies at the next
+   redeploy.
+3. The tunnel ingress rule. Writes are replace-style: GET, modify, PUT,
+   guarded on the expected version.
+4. An **explicit proxied CNAME**. The zone carries an unproxied
+   `*.greerso.com` -> `greerso.ddns.net` wildcard, so without its own record
+   the hostname reaches the wildcard's origin and never the tunnel.
+
+The bucket policy is anonymous `s3:GetObject` only — deliberately not MinIO's
+canned `download`, which also grants `s3:ListBucket` and made
+`https://cdn-glasshouse.greerso.com/glasshouse/` return an enumerable index of
+every object. That matters because the bucket will hold media for meetings
+that are not `released` yet.
+
+```bash
+# object: expect 206
+curl -o /dev/null -w '%{http_code}\n' -r 0-1023 \
+  https://cdn-glasshouse.greerso.com/glasshouse/thompsons-station/champds/103/pdf/987-Item-1-Utility-Board-Minutes-10_18_23.pdf
+# listing: expect 403
+curl -o /dev/null -w '%{http_code}\n' https://cdn-glasshouse.greerso.com/glasshouse/
+# exactly one address, or public traffic follows the wrong container
+docker exec openship-glasshouse-web getent hosts glasshouse-minio-os
+```
+
+Swap to `cdn.glasshouse.town` at the Phase 0 GATE. `tasks.` is still out — the
+tasks service is not deployed.
+
 ## LAN search
 
 No public domain this session. Verify against the published web port:
@@ -157,13 +202,31 @@ git pull --ff-only origin glasshouse
 SHA=$(git rev-parse --short HEAD)
 docker build --build-arg USE_LOCAL_DB=false \
   --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  --build-arg NEXT_PUBLIC_REALM_DOMAIN=glasshouse.greerso.com \
   -t glasshouse-web:$SHA .
 # set thinkstation /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
 # PATCH stored web image= that tag, then POST /deployments for web only
 ```
 
-The entrypoint runs `next build` at container start (minutes before :3100
-opens).
+**All three build args are required.** The build moved into the image (#4), so
+nothing at runtime can correct them: `NEXT_PUBLIC_REALM_DOMAIN` must name the
+host this image will serve, and `NEXT_PUBLIC_BUILD_COMMIT_SHA` must be the
+commit it was built from — that is the AGPL source link (#8). Neither may
+exist in the service env store; the store shadowing the build arg is what put
+the wrong commit in the footer for two weeks.
+
+Order matters: **build → PATCH image → PUT env → POST /deployments.** Patch
+the image first, or a stray redeploy in the window recreates the old image,
+whose start-time build would then read the env you just changed.
+
+A failed build costs nothing — the running container keeps serving, since the
+tag is only referenced once the stored image is patched. `next build` needs no
+database (`SKIP_ENV_VALIDATION=1`, and it logs `DATABASE_URL not set`), so a
+build failure is a real code failure.
+
+Verify by hostname, never by Openship's deployment status — `ready` means the
+container started. Check that the footer's source link, `SOURCE_COMMIT`, and
+the `/_next/static/<sha>/` asset paths all carry the tag you built.
 
 ## Task 11 — meeting proof (unblocked slice, 2026-08-17)
 
