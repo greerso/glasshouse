@@ -21,6 +21,12 @@
 #
 # Consequently the credential keys below are declared store-only rather than
 # interpolated: this file describes the stack's shape, not its secrets. #7
+#
+# For the same reason, **editing this file changes nothing on the live stack.**
+# It is documentation of intent that has to be applied deliberately, service by
+# service, with PATCH /projects/{projectId}/services/{serviceId}. Verified
+# 2026-09-07: web's stored `advanced` was `{}` — the healthcheck block below had
+# never reached the store at all — until it was patched in by hand.
 services:
   web:
     # Openship v0.5.0 builds from the project dir (`.`), not a sibling
