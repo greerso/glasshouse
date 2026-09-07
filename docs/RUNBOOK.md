@@ -96,10 +96,24 @@ Prefer a prebuilt tag (same pattern as web). After the image exists:
   enabled compose services if a targeted deploy drops a sibling).
 - Do not enable `tasks`. Do not enable monorepo wrapper `svc_nzXk6h_WJBllRV6i`.
 
-Do not `service sync` unless thinkstation `.env` already has `WEB_IMAGE` set
-to the running web tag. After any sync, confirm stored web is still
-`image=glasshouse-web:<sha>` `enabled=true`, pgsync `commandArgv=['-d']`,
-wrapper disabled.
+`openship service sync` is **not supported on this project**. Openship's
+service env store is authoritative and is the only place credential
+rotations were ever written; the `.env*` files that used to feed this compose
+had drifted stale by 2026-09-07 (db/es passwords, web `DATABASE_URL`,
+`DIRECT_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_REALM_DOMAIN`,
+pgsync `PG_URL` and its Elasticsearch credentials all differed from the
+running containers). A sync would have reverted the 2026-09-06 rotations and
+the staging hostname across four services. Those files were archived to
+`/data/openship/backups/glasshouse/env-archive-2026-09-07/` (mode 600) and
+`docker-compose.yml` now declares the credential keys store-only, so the
+compose file describes the stack's shape and never its secrets. #7
+
+Change env with GET-modify-PUT on
+`/projects/{projectId}/services/{serviceId}/env?environment=production`.
+`openship service env set` is a PUT-replace and `--secret` applies to every
+pair in the call, so a mixed secret/non-secret update must go through
+`openship api <path> -X PUT`. Existing secret values are recoverable with
+`docker exec <container> printenv <KEY>`.
 
 ## LAN search
 

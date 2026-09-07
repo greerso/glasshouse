@@ -7,6 +7,20 @@
 #   config`, which silently drops profile-gated services from the synced
 #   stack.
 # - Commands are exec-form arrays only (no shell strings).
+#
+# `openship service sync` is NOT a supported operation on this project.
+# Openship's service-level env store is authoritative — it wins over the
+# compose `environment:` map — and it is the only place credential rotations
+# have ever been written. Verified 2026-09-07: the store and the running
+# containers disagree with every env file that used to feed this compose
+# (db/es passwords, web DATABASE_URL/DIRECT_URL/NEXTAUTH_SECRET/NEXTAUTH_URL/
+# NEXT_PUBLIC_REALM_DOMAIN, pgsync PG_URL and its Elasticsearch credentials).
+# A sync would silently revert the 2026-09-06 rotations and the staging
+# hostname across four services. Change env with GET-modify-PUT on
+# `/projects/{projectId}/services/{serviceId}/env?environment=production`.
+#
+# Consequently the credential keys below are declared store-only rather than
+# interpolated: this file describes the stack's shape, not its secrets. #7
 services:
   web:
     # Openship v0.5.0 builds from the project dir (`.`), not a sibling
@@ -24,7 +38,8 @@ services:
     # WEB_IMAGE is interpolated from this project's .env at `service sync`.
     image: ${WEB_IMAGE}
     ports: ["3100:3000"]
-    env_file: .env.web
+    # Env is store-only (see header). The store holds the 24 keys this service
+    # needs; they are not reproducible from this file.
     environment: { TZ: America/Chicago }
     depends_on: [db, valkey]
     restart: unless-stopped
@@ -42,7 +57,7 @@ services:
     # thinkstation-prebuilt tag before enabling this service.
     build: { context: ../glasshouse-tasks }
     ports: ["3005:3005"]
-    env_file: .env.tasks
+    # Env is store-only (see header).
     environment: { TZ: America/Chicago }
     volumes:
       - ./volumes/tasks-data:/app/data
@@ -53,7 +68,7 @@ services:
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_connections=200"]
     environment:
       POSTGRES_USER: glasshouse
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # POSTGRES_PASSWORD is store-only (see header) — rotated 2026-09-06.
       POSTGRES_DB: glasshouse
       TZ: America/Chicago
     # Named volume — /data is NFS (nolock); Postgres ESTALEs on that bind.
@@ -64,7 +79,8 @@ services:
     environment:
       discovery.type: single-node
       xpack.security.enabled: "true"
-      ELASTIC_PASSWORD: ${ES_PASSWORD}
+      # ELASTIC_PASSWORD is store-only (see header) — rotated 2026-09-06.
+      # Only consulted at first init; the live cluster password lives there.
       ES_JAVA_OPTS: "-Xms1g -Xmx1g"
     volumes: ["./volumes/esdata:/usr/share/elasticsearch/data"]
     restart: unless-stopped
@@ -77,7 +93,8 @@ services:
     # service command. Daemon flag is -d (pgsync 7.3.0).
     image: glasshouse-pgsync:7.3.0
     command: ["-d"]
-    env_file: .env.pgsync
+    # Env is store-only (see header). ELASTICSEARCH_HTTP_AUTH must be in
+    # `elastic,<password>` form — a comma, not a colon.
     depends_on: [db, es, valkey]
     restart: unless-stopped
   minio:
@@ -85,7 +102,8 @@ services:
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: glasshouse
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+      # MINIO_ROOT_PASSWORD is store-only (see header). MINIO_ROOT_USER is
+      # also the app's S3_ACCESS_KEY, so the app authenticates as root.
     volumes: ["./volumes/miniodata:/data"]
     ports: ["9000:9000", "9001:9001"]
     restart: unless-stopped
@@ -104,7 +122,7 @@ services:
     # INGEST_IMAGE is interpolated from this project's .env at `service sync`.
     image: ${INGEST_IMAGE}
     command: ["node", "dist/index.js"]
-    env_file: .env.ingest
+    # Env is store-only (see header).
     environment: { TZ: America/Chicago }
     depends_on: [web, minio]
     restart: unless-stopped
