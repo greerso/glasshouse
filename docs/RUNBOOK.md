@@ -1,0 +1,535 @@
+# Glasshouse operator runbook (Phase 0)
+
+Procedures as executed on the thinkstation (10.0.0.66). Secrets live only in
+untracked `/data/openship/projects/glasshouse/.env*` and the Openship stored
+model. Do not commit `.env*`. Timezone: America/Chicago.
+
+Project `proj_5AhrGz_cRgruBEi7`. Compose services share the Docker network
+`openship-glasshouse` and resolve each other by service name (`db`, `es`,
+`valkey`, `web`, `pgsync`, `minio`).
+
+Openship CLI on the box: `~/.local/bin/openship` (not on a non-login `PATH`).
+Do not run `openship up` on a laptop. Do not `docker compose run` against this
+stack — Openship does not attach compose to `openship-glasshouse`.
+
+## PGSync image
+
+Pinned image `glasshouse-pgsync:7.3.0` (pgsync 7.3.0 on
+`python:3.12.11-slim-bookworm` linux/amd64 digest in `pgsync/Dockerfile`).
+
+```bash
+cd /data/openship/projects/glasshouse
+git pull --ff-only origin feature/phase0-bringup
+docker build -t glasshouse-pgsync:7.3.0 ./pgsync
+docker run --rm --entrypoint pgsync glasshouse-pgsync:7.3.0 --help
+# 7.3.0 flags used here: --bootstrap / -b  and  -d / --daemon
+docker run --rm --entrypoint pgsync glasshouse-pgsync:7.3.0 --version
+# Version: 7.3.0
+```
+
+The daemon command is `["-d"]` (compose + stored `commandArgv`). Do not
+`openship service update --command`.
+
+## Bootstrap (one-time; re-run only if slots/triggers/`_view` are gone)
+
+Not `docker compose run`. One-off on the project network, env from the
+untracked file (never printed):
+
+```bash
+docker run --rm --network openship-glasshouse \
+  --env-file /data/openship/projects/glasshouse/.env.pgsync \
+  -e ELASTICSEARCH_TIMEOUT=120 -e ELASTICSEARCH_CHUNK_SIZE=50 \
+  glasshouse-pgsync:7.3.0 --bootstrap
+```
+
+`pgsync --bootstrap` (7.3.0) creates triggers, the `glasshouse_subjects`
+logical slot, materialized view `public._view`, the `subjects` ES index, then
+does an initial pull and exits.
+
+### GRANT after every bootstrap
+
+pgsync creates `public._view`. Re-run this after every bootstrap even though
+role `glasshouse` owns the object:
+
+```bash
+docker exec openship-glasshouse-db \
+  psql -U glasshouse -d glasshouse \
+  -c 'GRANT SELECT ON public._view TO glasshouse;'
+```
+
+## ES auth (pgsync vs web)
+
+`xpack.security.enabled=true`. 9200 is not published on the host.
+
+pgsync 7.3.0: if `ELASTICSEARCH_URL` is set, `get_search_url()` returns it
+verbatim and ignores `ELASTICSEARCH_USER`/`ELASTICSEARCH_PASSWORD`.
+
+Openship injects the web service env into sibling containers. Web sets
+`ELASTICSEARCH_URL=http://es:9200` (API-key auth, no userinfo). That leaked
+URL 401s pgsync unless basic auth is also supplied as
+`ELASTICSEARCH_HTTP_AUTH=elastic,<password>` (comma-separated; password must
+not contain a comma). That pair is in thinkstation `.env.pgsync` and in the
+stored pgsync `environment`.
+
+Web uses `ELASTICSEARCH_API_KEY` (minted after first ES boot), not basic auth.
+
+## Verify `_cat/indices` (from inside the ES container)
+
+Expand the password on the host from `.env`. Do not rely on a host export
+inside `docker exec`.
+
+```bash
+ES_PASSWORD=$(sed -n 's/^ES_PASSWORD=//p' /data/openship/projects/glasshouse/.env)
+docker exec -e ES_PASSWORD="$ES_PASSWORD" openship-glasshouse-es \
+  curl -sS -u "elastic:${ES_PASSWORD}" 'http://localhost:9200/_cat/indices?v'
+# expect a subjects row (yellow on single-node is normal: replica unassigned)
+```
+
+## Enable + deploy pgsync only
+
+Prefer a prebuilt tag (same pattern as web). After the image exists:
+
+- PATCH stored pgsync `svc_-SgMFWFVOx_0-N4B`: `image=glasshouse-pgsync:7.3.0`,
+  `build=""`, `enabled=true`, `environment` from `.env.pgsync` (must include
+  `ELASTICSEARCH_HTTP_AUTH`). Leave `commandArgv=['-d']`.
+- `POST /api/deployments` with **only** that serviceId (or all currently
+  enabled compose services if a targeted deploy drops a sibling).
+- Do not enable `tasks`. Do not enable monorepo wrapper `svc_nzXk6h_WJBllRV6i`.
+
+`openship service sync` is **not supported on this project**. Openship's
+service env store is authoritative and is the only place credential
+rotations were ever written; the `.env*` files that used to feed this compose
+had drifted stale by 2026-09-07 (db/es passwords, web `DATABASE_URL`,
+`DIRECT_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_REALM_DOMAIN`,
+pgsync `PG_URL` and its Elasticsearch credentials all differed from the
+running containers). A sync would have reverted the 2026-09-06 rotations and
+the staging hostname across four services. Those files were archived to
+`/data/openship/backups/glasshouse/env-archive-2026-09-07/` (mode 600) and
+`docker-compose.yml` now declares the credential keys store-only, so the
+compose file describes the stack's shape and never its secrets. #7
+
+Change env with GET-modify-PUT on
+`/projects/{projectId}/services/{serviceId}/env?environment=production`.
+`openship service env set` is a PUT-replace and `--secret` applies to every
+pair in the call, so a mixed secret/non-secret update must go through
+`openship api <path> -X PUT`. Existing secret values are recoverable with
+`docker exec <container> printenv <KEY>`.
+
+## Media CDN — cdn-glasshouse.greerso.com
+
+Staging CDN for MinIO, live 2026-09-07 (#5). Replaces `cdn.glasshouse.town`,
+which never resolved because the domain is unregistered.
+
+```
+Cloudflare (proxied CNAME cdn-glasshouse -> <tunnel>.cfargotunnel.com)
+  -> magnolia-thinkstation tunnel (config v53)
+  -> http://glasshouse-minio-os:9000
+```
+
+Four things make it work, and all four are required:
+
+1. `openship-glasshouse-minio` is joined to the `magnolia` network with alias
+   `glasshouse-minio-os`. It is otherwise only on `openship-glasshouse`, and
+   publishes 9000/9001 on loopback only, so cloudflared cannot reach it.
+2. A row in `~/.local/share/magnolia-mesh/aliases`
+   (`openship-glasshouse-minio<TAB>glasshouse-minio-os`) so the attach survives
+   container recreation. A bare `docker network connect` dies at the next
+   redeploy.
+3. The tunnel ingress rule. Writes are replace-style: GET, modify, PUT,
+   guarded on the expected version.
+4. An **explicit proxied CNAME**. The zone carries an unproxied
+   `*.greerso.com` -> `greerso.ddns.net` wildcard, so without its own record
+   the hostname reaches the wildcard's origin and never the tunnel.
+
+The bucket policy is anonymous `s3:GetObject` only — deliberately not MinIO's
+canned `download`, which also grants `s3:ListBucket` and made
+`https://cdn-glasshouse.greerso.com/glasshouse/` return an enumerable index of
+every object. That matters because the bucket will hold media for meetings
+that are not `released` yet.
+
+```bash
+# object: expect 206
+curl -o /dev/null -w '%{http_code}\n' -r 0-1023 \
+  https://cdn-glasshouse.greerso.com/glasshouse/thompsons-station/champds/103/pdf/987-Item-1-Utility-Board-Minutes-10_18_23.pdf
+# listing: expect 403
+curl -o /dev/null -w '%{http_code}\n' https://cdn-glasshouse.greerso.com/glasshouse/
+# exactly one address, or public traffic follows the wrong container
+docker exec openship-glasshouse-web getent hosts glasshouse-minio-os
+```
+
+Swap to `cdn.glasshouse.town` at the Phase 0 GATE. `tasks.` is still out — the
+tasks service is not deployed.
+
+## LAN search
+
+No public domain this session. Verify against the published web port:
+
+```bash
+curl -sS -X POST http://10.0.0.66:3100/api/search \
+  -H 'content-type: application/json' \
+  -d '{"query":"test"}'
+# expect HTTP 200 (empty results are OK before meetings exist)
+```
+
+Self-hosted ES 8.17 basic license does not include RRF. The web search path
+used in Phase 0 is BM25 (`enableSemanticSearch: false`). Do not start a
+trial license just to keep the upstream RRF/semantic retrievers.
+
+## Daemon health
+
+```bash
+docker ps --filter name=openship-glasshouse-pgsync
+docker logs openship-glasshouse-pgsync --tail 20
+# expect: Sync glasshouse:subjects Xlog: … (no 401 / schema errors)
+```
+
+`pg_replication_slots.glasshouse_subjects` may show `active=f`. pgsync 7.3.0
+uses peek/get on the slot rather than a long-lived walsender.
+
+## Nightly pg_dump (host crontab, user greer, America/Chicago)
+
+Installed in Task 7:
+
+```
+0 3 * * * docker exec openship-glasshouse-db pg_dump -U glasshouse -d glasshouse | gzip > /data/openship/backups/glasshouse/glasshouse-$(date +\%F).sql.gz
+```
+
+## Web image rebuild (when glasshouse-web HEAD moves)
+
+```bash
+cd /data/openship/projects/glasshouse-web
+git pull --ff-only origin glasshouse
+SHA=$(git rev-parse --short HEAD)
+docker build --build-arg USE_LOCAL_DB=false \
+  --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  --build-arg NEXT_PUBLIC_REALM_DOMAIN=glasshouse.greerso.com \
+  -t glasshouse-web:$SHA .
+# set thinkstation /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
+# PATCH stored web image= that tag, then POST /deployments for web only
+```
+
+**All three build args are required.** The build moved into the image (#4), so
+nothing at runtime can correct them: `NEXT_PUBLIC_REALM_DOMAIN` must name the
+host this image will serve, and `NEXT_PUBLIC_BUILD_COMMIT_SHA` must be the
+commit it was built from — that is the AGPL source link (#8). Neither may
+exist in the service env store; the store shadowing the build arg is what put
+the wrong commit in the footer for two weeks.
+
+Order matters: **build → PATCH image → PUT env → POST /deployments.** Patch
+the image first, or a stray redeploy in the window recreates the old image,
+whose start-time build would then read the env you just changed.
+
+A failed build costs nothing — the running container keeps serving, since the
+tag is only referenced once the stored image is patched. `next build` needs no
+database (`SKIP_ENV_VALIDATION=1`, and it logs `DATABASE_URL not set`), so a
+build failure is a real code failure.
+
+Verify by hostname, never by Openship's deployment status — `ready` means the
+container started. Check that the footer's source link, `SOURCE_COMMIT`, and
+the `/_next/static/<sha>/` asset paths all carry the tag you built.
+
+## Task 11 — meeting proof (unblocked slice, 2026-08-17)
+
+Transcription / Mux / `cdn.` stay blocked. No Anthropic, ElevenLabs,
+pyannote, or Mux keys. `tasks` is still disabled. Do not call
+`requestTranscribe`. Do not treat Phase 0 E2E as complete.
+
+### What exists on thinkstation
+
+- City `thompsons-station`, body `thompsons-station-boma`.
+- Meeting `aug11_2026`: **Board of Mayor and Aldermen — Regular Meeting**,
+  `dateTime` `2026-08-11T23:00:00.000Z` (ChampDS event **390**, local
+  `2026-08-11 18:00` America/Chicago). Created via
+  `POST /api/cities/thompsons-station/meetings` with the ingest service key
+  (`Authorization: Bearer` from `/data/openship/projects/glasshouse/.ingest-api-key`,
+  mode 600). `processAgenda: false`.
+- POST always inserts `released=false`. Released afterward:
+  `UPDATE "CouncilMeeting" SET released = true WHERE id = 'aug11_2026';`
+- `youtubeUrl` **omitted** — no working direct MP4 (HTTP 200 + video
+  content-type). ChampDS `MediaPath` is
+  `/2026-08/9406ff0ae567d88b0dd4927b6eabb9c95b91b44e.mp4`. Probes:
+  `securestream10` 404; `securestream2` NXDOMAIN; `securestream7` HTML
+  “Not Found.” HLS **does** play at
+  `https://securestream7.champds.com/ThompsonsStationTNOD/_definst_/2026-08/9406ff0ae567d88b0dd4927b6eabb9c95b91b44e.mp4/playlist.m3u8?PLAY`
+  (`application/vnd.apple.mpegurl`). Do not store that as `youtubeUrl`;
+  the tasks Direct-URL branch needs an MP4.
+- **17 subjects** from the ChampDS agenda (7 top-level + 10 children of
+  “Agenda Items”). No create-subject POST exists (only superadmin PATCH
+  on `/subjects/:id`), so rows were inserted to match Prisma `Subject`
+  (`name`, `description`, `agendaItemIndex`, no `name_en`, no votes).
+  Top-level `agendaItemIndex` = ChampDS `OrderOrdinal` (0, 10, 20, 30,
+  40, 50, 70). Child ordinals collide with those, so children use
+  `51 + OrderOrdinal/10` (51–61) and sort between “Agenda Items” (50)
+  and Adjourn (70).
+- Official JSON: `docs/research/champds/event-390.json`.
+
+Meeting id was passed as `aug11_2026`. If omitted, web
+`formatDateAsMeetingId` uses `Europe/Athens` and would slug this UTC
+instant as `aug12_2026`.
+
+### Verify (LAN)
+
+```bash
+curl -sS http://10.0.0.66:3100/api/cities/thompsons-station/meetings
+# one meeting, id aug11_2026, released true, 17 subjects
+
+curl -sS http://10.0.0.66:3100/thompsons-station | grep -F 'Board of Mayor and Aldermen — Regular Meeting'
+
+curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 | grep -E 'Meeting Called to Order|Consent Agenda|FOG|Adjourn'
+# "No subjects" in the HTML is the i18n bundle string, not an empty list
+```
+
+pgsync (if up) will show `Elasticsearch: [17]` for `glasshouse:subjects`.
+Web image stays `glasshouse-web:a44a4018`. Do not enable `tasks` until
+the keys exist.
+
+## Phase 1 — document ingest
+
+Web APIs from Task 1 must be on the running image before ingest writes
+anything. Rebuild web from glasshouse-web branch `glasshouse` after that
+PR is pushed, then ingest.
+
+### Rebuild web (ingest APIs)
+
+```bash
+cd /data/openship/projects/glasshouse-web
+git pull --ff-only origin glasshouse
+SHA=$(git rev-parse --short HEAD)
+docker build --build-arg USE_LOCAL_DB=false \
+  --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  -t glasshouse-web:$SHA .
+# set thinkstation /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
+# PATCH stored web image= that tag, then POST /deployments for web only
+# entrypoint runs prisma migrate deploy (AgendaObservation) then next build
+```
+
+### Build ingest image
+
+```bash
+cd /data/openship/projects/glasshouse
+git pull --ff-only origin main   # or the feature branch until merged
+SHA=$(git -C ingest rev-parse --short HEAD 2>/dev/null || git rev-parse --short HEAD)
+docker build -t glasshouse-ingest:$SHA ./ingest
+docker run --rm --entrypoint node glasshouse-ingest:$SHA dist/index.js --help || true
+# the image CMD is node dist/index.js; --once is supported:
+docker run --rm --network openship-glasshouse \
+  --env-file /data/openship/projects/glasshouse/.env.ingest \
+  glasshouse-ingest:$SHA node dist/index.js --once
+```
+
+### Enable + deploy ingest only
+
+Same prebuilt-tag pattern as pgsync (`svc_-SgMFWFVOx_0-N4B`):
+
+- Write untracked `/data/openship/projects/glasshouse/.env.ingest` from `.env.example`.
+  `OC_API_KEY` is the existing ingest ServiceApiKey
+  (`/data/openship/projects/glasshouse/.ingest-api-key`, mode 600).
+- `INGEST_IMAGE=glasshouse-ingest:$SHA` in the project `.env`.
+- `openship service sync docker-compose.yml --project proj_5AhrGz_cRgruBEi7 --yes`
+- After sync, confirm stored web is still `image=glasshouse-web:<sha>` `enabled=true`,
+  pgsync `commandArgv=['-d']`, wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
+- PATCH stored ingest: `image=glasshouse-ingest:$SHA`, `build=""`, `enabled=true`,
+  `commandArgv=["node","dist/index.js"]`, `environment` from `.env.ingest`.
+- `POST /api/deployments` with **only** that ingest serviceId (or all currently
+  enabled compose services if a targeted deploy drops a sibling).
+- Do not enable `tasks`. Do not enable the monorepo wrapper.
+
+### Bucket
+
+If `glasshouse` does not yet exist on MinIO:
+
+```bash
+docker exec openship-glasshouse-minio \
+  mc alias set local http://localhost:9000 glasshouse "$MINIO_PASSWORD"
+docker exec openship-glasshouse-minio mc mb -p local/glasshouse
+```
+
+LAN-only public reads until `cdn.` exists. Objects are still written.
+
+### Verify event 390 is not duplicated
+
+```bash
+curl -sS http://10.0.0.66:3100/api/cities/thompsons-station/meetings
+# still exactly one row with id aug11_2026 (not champds-390)
+
+curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 \
+  | grep -E 'Meeting Called to Order|Consent Agenda|FOG|Adjourn'
+
+# after ingest has written PDFs:
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  http://10.0.0.66:9000/glasshouse/thompsons-station/champds/390/pdf/4672-Item-a-BOMA-Minutes-6_9_2026.pdf
+# expect 200 once that object exists
+
+docker logs openship-glasshouse-ingest --tail 50
+# expect: transcribe aug11_2026: skipped (Phase 1 ingest is document-only…)
+# expect: no "POST meeting" for 390; cycle processed/skipped/failed counts
+```
+
+Backfill is the first poll: missing observations newest-first for all 9
+groups with `EventDateTimeUTC >= 2022-11-01`. Subsequent 15-minute cycles
+only fetch event detail when the list fingerprint changes or the event is new.
+
+## Phase 1 — minutes vote extraction
+
+Extract named roll-call / voice outcomes from already-mirrored ChampDS minutes
+PDFs onto the meeting the minutes *document* (June 9 BOMA is `champds-377`,
+even though the PDF is attached to Aug 11 `aug11_2026`). No Anthropic. No
+`pollDecisions.ts`. Do not enable `tasks`. Do not invent keys. Do not flip
+`NEXTAUTH_URL`.
+
+Web HEAD that ships tallies + unreviewed badge: `ae9b4f1c`, plus typecheck
+follow-ups `219acb8e` (omit `meetingAttendance` from `MeetingDataForExport`)
+and `e789f435` (stub `voteResult` on search results). Deploy
+`glasshouse-web:e789f435` or later. Ingest HEAD that ships `pdftotext` +
+extract hook: `cf91be7` → `glasshouse-ingest:cf91be7`. Bake the full web
+commit into `NEXT_PUBLIC_BUILD_COMMIT_SHA`. `ae9b4f1c` alone fails
+`next build` (`Admin.tsx` export + `SearchResultLight`).
+
+Prefer **PATCH stored image + `POST /api/deployments/build/access` by
+serviceId**. Do **not** `service sync` unless both image env vars already
+point at the tags you are about to run.
+
+### Rebuild web (schema + votes API + public tallies)
+
+```bash
+cd /data/openship/projects/glasshouse-web
+git pull --ff-only origin glasshouse
+SHA=$(git rev-parse --short HEAD)   # expect ae9b4f1c or later
+docker build --build-arg USE_LOCAL_DB=false \
+  --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  -t glasshouse-web:$SHA .
+# set /data/openship/projects/glasshouse/.env WEB_IMAGE=glasshouse-web:$SHA
+# PATCH stored web svc_ZkdBYClULMR_ZwAt image= that tag, enabled=true, build=""
+# POST /api/deployments/build/access serviceIds=[web]
+# entrypoint: USE_LOCAL_DB=false → prisma migrate deploy, then next build
+```
+
+Confirm after web is Ready: cache namespace contains the full SHA;
+`aug11_2026` still released with 17 subjects; meeting count not wiped.
+
+### Rebuild ingest (poppler + extract hook)
+
+```bash
+cd /data/openship/projects/glasshouse
+git pull --ff-only origin feature/phase0-bringup   # or main after merge
+SHA=$(git rev-parse --short HEAD)   # expect cf91be7 or later
+docker build -t glasshouse-ingest:$SHA ./ingest
+docker run --rm --entrypoint pdftotext glasshouse-ingest:$SHA -v
+# pdftotext version 22.12.0 (or the bookworm poppler-utils line)
+# set project .env INGEST_IMAGE=glasshouse-ingest:$SHA
+# PATCH stored ingest svc_HPIp4xRYqr-a4-DE image= that tag, enabled=true, build=""
+# POST /api/deployments/build/access serviceIds=[ingest]
+```
+
+### Before any `service sync`
+
+```bash
+grep -E '^(WEB_IMAGE|INGEST_IMAGE)=' /data/openship/projects/glasshouse/.env
+# both must be the intended prebuilt tags. If either is missing or stale, stop.
+```
+
+Do not `service sync` for a minutes-vote rebuild. Targeted PATCH + deploy is
+enough. After any accidental sync, re-read stored models: web
+`image=glasshouse-web:<sha>` `enabled=true`, ingest
+`image=glasshouse-ingest:<sha>` `enabled=true`, pgsync `commandArgv=['-d']`,
+wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
+
+### Watch the db after every deploy
+
+Targeted web/ingest deploys have dropped `openship-glasshouse-db`. After
+**every** `POST /deployments`:
+
+```bash
+docker ps --filter name=openship-glasshouse-db --format '{{.Names}} {{.Status}} {{.Image}}'
+docker inspect openship-glasshouse-db --format '{{range .Mounts}}{{.Name}} {{.Destination}}{{end}}'
+# expect openship-glasshouse-pgdata → /var/lib/postgresql/data
+```
+
+If the db container is gone, restore by redeploying the enabled stack **without
+tasks** (the named volume still holds the data):
+
+```bash
+# POST /api/deployments/build/access serviceIds=
+#   web svc_ZkdBYClULMR_ZwAt
+#   db  svc_YoqObVPf2fBmTIlw
+#   es  svc_ftu9jLpMwPHC4mEM
+#   minio svc_PG8Q5nQsrivcKsLb
+#   valkey svc_NZ8lr1xvGgYKzTmo
+#   pgsync svc_-SgMFWFVOx_0-N4B
+#   ingest svc_HPIp4xRYqr-a4-DE
+# Do NOT include tasks svc_BMBAUNQxHCxL5FMe.
+```
+
+Do not `psql`-insert votes. Do not `docker volume rm`.
+
+### Extract June 9 onto champds-377
+
+A fresh ingest process re-gets event 390 (hash map empty) and extracts the
+already-mirrored `BOMA Minutes 6_9_2026` PDF. Either wait for the daemon's
+first cycle after the ingest container starts, or run `--once` on the project
+network:
+
+```bash
+docker exec openship-glasshouse-ingest node dist/index.js --once
+# or one-off (same env as the daemon):
+docker run --rm --network openship-glasshouse \
+  --env-file /data/openship/projects/glasshouse/.env.ingest \
+  glasshouse-ingest:$SHA node dist/index.js --once
+```
+
+If `champds-377` 404s or extract logs `meeting-not-ingested`, ingest the June 9
+event first (it is already in the ChampDS backfill window). Then `--once`
+again. Do not write `SubjectVote` / `SubjectVoteResult` by hand.
+
+### Verify LAN tallies
+
+```bash
+curl -sS http://10.0.0.66:3100/api/cities/thompsons-station/meetings/champds-377
+# 200; June 9 BOMA
+
+curl -sS http://10.0.0.66:3100/thompsons-station/champds-377 \
+  | grep -E 'Yay|Alexander|Machine-extracted|unreviewed|Amendment: Ordinance 2026-014'
+# public card: named yays (Alexander …), unreviewed / Machine-extracted badge
+
+curl -sS http://10.0.0.66:3100/thompsons-station/aug11_2026 \
+  | grep -cE 'Meeting Called to Order|Consent Agenda|FOG|Adjourn'
+# still 17 subjects; no vote extraction onto Aug 11
+```
+
+Idempotency + counts (inside the db container; no secrets printed):
+
+```bash
+docker exec openship-glasshouse-db \
+  psql -U glasshouse -d glasshouse -c "
+SELECT
+  (SELECT count(*) FROM \"SubjectVoteResult\" svr
+     JOIN \"Subject\" s ON s.id = svr.\"subjectId\"
+    WHERE s.\"councilMeetingId\" = 'champds-377') AS vote_results,
+  (SELECT count(*) FROM \"SubjectVote\" sv
+     JOIN \"Subject\" s ON s.id = sv.\"subjectId\"
+    WHERE s.\"councilMeetingId\" = 'champds-377') AS subject_votes,
+  (SELECT count(*) FROM \"MeetingAttendance\"
+    WHERE \"councilMeetingId\" = 'champds-377'
+      AND source = 'decision' AND status = 'PRESENT') AS present;
+"
+# expect vote_results >= 10 (8 agenda + 2 amendments), present = 5
+
+docker exec openship-glasshouse-db \
+  psql -U glasshouse -d glasshouse -c "
+SELECT s.name, svr.\"yayCount\", svr.\"nayCount\", svr.\"abstainCount\", svr.outcome
+  FROM \"SubjectVoteResult\" svr
+  JOIN \"Subject\" s ON s.id = svr.\"subjectId\"
+ WHERE s.\"councilMeetingId\" = 'champds-377'
+ ORDER BY s.name;
+"
+# Amendment: Ordinance 2026-014 → 2 / 3 / 0 FAILED
+# consent parent → 5 / 0 / 0 PASSED
+# Sarah Benson amendment (Amendment: amended the main motion…) → 3 / 1 / 1 PASSED
+```
+
+Re-run `--once`. `SubjectVote` count for `champds-377` must not increase.
+
+```bash
+docker exec openship-glasshouse-ingest pdftotext -v
+# same poppler line as the image check
+```

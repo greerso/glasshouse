@@ -1,0 +1,142 @@
+# Openship compose stack for Glasshouse (US OpenCouncil fork).
+#
+# Constraints imposed by Openship v0.5.0 (do not "fix" these away):
+# - No `networks:` keys anywhere. Openship strips them at sync time — every
+#   service joins one project network and resolves peers by service name.
+# - No compose `profiles:`. Openship's service sync runs `docker compose
+#   config`, which silently drops profile-gated services from the synced
+#   stack.
+# - Commands are exec-form arrays only (no shell strings).
+#
+# `openship service sync` is NOT a supported operation on this project.
+# Openship's service-level env store is authoritative — it wins over the
+# compose `environment:` map — and it is the only place credential rotations
+# have ever been written. Verified 2026-09-07: the store and the running
+# containers disagree with every env file that used to feed this compose
+# (db/es passwords, web DATABASE_URL/DIRECT_URL/NEXTAUTH_SECRET/NEXTAUTH_URL/
+# NEXT_PUBLIC_REALM_DOMAIN, pgsync PG_URL and its Elasticsearch credentials).
+# A sync would silently revert the 2026-09-06 rotations and the staging
+# hostname across four services. Change env with GET-modify-PUT on
+# `/projects/{projectId}/services/{serviceId}/env?environment=production`.
+#
+# Consequently the credential keys below are declared store-only rather than
+# interpolated: this file describes the stack's shape, not its secrets. #7
+#
+# For the same reason, **editing this file changes nothing on the live stack.**
+# It is documentation of intent that has to be applied deliberately, service by
+# service, with PATCH /projects/{projectId}/services/{serviceId}. Verified
+# 2026-09-07: web's stored `advanced` was `{}` — the healthcheck block below had
+# never reached the store at all — until it was patched in by hand.
+services:
+  web:
+    # Openship v0.5.0 builds from the project dir (`.`), not a sibling
+    # context. Prebuild on the thinkstation:
+    #   docker build --build-arg USE_LOCAL_DB=false \
+    #     --build-arg NEXT_PUBLIC_BUILD_COMMIT_SHA=$(git -C ../glasshouse-web rev-parse HEAD) \
+    #     --build-arg NEXT_PUBLIC_REALM_DOMAIN=<the host this image will serve> \
+    #     -t glasshouse-web:<sha> ../glasshouse-web
+    # Both NEXT_PUBLIC_* args are inlined into the client bundle by the build,
+    # which now runs at image build time rather than container start (#4), so
+    # the build args are the ONLY source for them and every rebuild must pass
+    # all three. NEXT_PUBLIC_REALM_DOMAIN must name the deployment's own host
+    # (glasshouse.greerso.com on staging) or the us realm's absolute URLs point
+    # at the unregistered glasshouse.town; NEXT_PUBLIC_BUILD_COMMIT_SHA is the
+    # AGPL source link and must be the commit the image was built from (#8).
+    # Neither may be set in the service env store any more: the store used to
+    # win, because the build ran with the container's runtime env, and that is
+    # exactly how the footer came to advertise the wrong commit.
+    # WEB_IMAGE is interpolated from this project's .env at `service sync`.
+    image: ${WEB_IMAGE}
+    ports: ["3100:3000"]
+    # Env is store-only (see header). The store holds the 24 keys this service
+    # needs; they are not reproducible from this file.
+    environment: { TZ: America/Chicago }
+    depends_on: [db, valkey]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # The image is prebuilt (#4), so start is `prisma migrate deploy` plus
+      # `next start`. 10m was cover for the old container-start `next build`.
+      start_period: 90s
+  tasks:
+    # TODO: Openship cannot build sibling ../glasshouse-tasks (same `.`
+    # context bug as web). Switch to `image: ${TASKS_IMAGE}` and a
+    # thinkstation-prebuilt tag before enabling this service.
+    build: { context: ../glasshouse-tasks }
+    ports: ["3005:3005"]
+    # Env is store-only (see header).
+    environment: { TZ: America/Chicago }
+    volumes:
+      - ./volumes/tasks-data:/app/data
+      - ./volumes/tasks-logs:/app/logs
+    restart: unless-stopped
+  db:
+    image: postgis/postgis:16-3.5
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_USER: glasshouse
+      # POSTGRES_PASSWORD is store-only (see header) — rotated 2026-09-06.
+      POSTGRES_DB: glasshouse
+      TZ: America/Chicago
+    # Named volume — /data is NFS (nolock); Postgres ESTALEs on that bind.
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    restart: unless-stopped
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      # ELASTIC_PASSWORD is store-only (see header) — rotated 2026-09-06.
+      # Only consulted at first init; the live cluster password lives there.
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+    volumes: ["./volumes/esdata:/usr/share/elasticsearch/data"]
+    restart: unless-stopped
+  pgsync:
+    # toluaina1/pgsync:latest is linux/arm64 only; thinkstation is x86_64.
+    # Prebuild on the thinkstation (Openship deploy uses this tag, same
+    # pattern as web — do not rely on a Hub pull of this name):
+    #   docker build -t glasshouse-pgsync:7.3.0 ./pgsync
+    # One-time bootstrap is a one-off on openship-glasshouse, not this
+    # service command. Daemon flag is -d (pgsync 7.3.0).
+    image: glasshouse-pgsync:7.3.0
+    command: ["-d"]
+    # Env is store-only (see header). ELASTICSEARCH_HTTP_AUTH must be in
+    # `elastic,<password>` form — a comma, not a colon.
+    depends_on: [db, es, valkey]
+    restart: unless-stopped
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: glasshouse
+      # MINIO_ROOT_PASSWORD is store-only (see header). MINIO_ROOT_USER is
+      # also the app's S3_ACCESS_KEY, so the app authenticates as root.
+    volumes: ["./volumes/miniodata:/data"]
+    ports: ["9000:9000", "9001:9001"]
+    restart: unless-stopped
+  valkey:
+    image: valkey/valkey:8-alpine
+    # Durable snapshotting — pgsync's checkpoint position (db 1) must survive
+    # a restart, per Openship requirement.
+    command: ["valkey-server", "--save", "60", "1"]
+    # Named volume — same NFS ESTALE reason as db.
+    volumes: ["valkeydata:/data"]
+    restart: unless-stopped
+  ingest:
+    # Openship v0.5.0 builds from the project dir (`.`), not a sibling
+    # context. Prebuild on the thinkstation:
+    #   docker build -t glasshouse-ingest:<sha> ./ingest
+    # INGEST_IMAGE is interpolated from this project's .env at `service sync`.
+    image: ${INGEST_IMAGE}
+    command: ["node", "dist/index.js"]
+    # Env is store-only (see header).
+    environment: { TZ: America/Chicago }
+    depends_on: [web, minio]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  valkeydata:

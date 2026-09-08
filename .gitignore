@@ -1,3 +1,11 @@
 .remember/
 .env
 *.env
+.env.web
+.env.tasks
+.env.pgsync
+.env.ingest
+.ingest-api-key
+volumes/
+ingest/node_modules
+ingest/dist
