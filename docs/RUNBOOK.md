@@ -248,10 +248,14 @@ Removing the key from the *env store* did not remove it — it unmasked that
 older copy underneath, and `PATCH …/services/<id>` with an `environment` map
 **merges**, so the key cannot be deleted that way.
 
-It is inert, because Next inlines every `NEXT_PUBLIC_*` at build time into the
-server bundle as well as the client one, so the runtime variable is never read.
-That is the whole point of #4, and this is the proof of it. Check the rendered
-output rather than the environment:
+It is inert here, because Next replaces `process.env.NEXT_PUBLIC_X` with a
+literal at build time — in the server bundle as well as the client one — so the
+runtime variable is never read. That substitution is **textual**: it applies
+wherever the source spells the name out, which is every read in this codebase
+(`src/lib/realm.ts`, `src/env.mjs`'s `runtimeEnv`, `SourcesList`). An indirect
+read such as `process.env[key]` would be a genuine runtime lookup and *would*
+pick up the stale value, so do not generalise this to "runtime env never
+matters". Check the rendered output rather than the environment:
 
 ```bash
 curl -s https://glasshouse.greerso.com/robots.txt | grep Host
