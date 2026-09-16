@@ -1,10 +1,18 @@
-# Draft email to WCEC — prepared 2026-09-16, NOT SENT
+# Email to WCEC — SENT 2026-09-16
 
-Issue #2 step 4. Supersedes the Gmail draft created 2026-09-08, whose wording
-("after the Commission approves the list on September 11") is now stale — the
-meeting has happened. The Gmail MCP session expired before that draft could be
-updated in place, so the current text lives here. Either replace the draft body
-with this and send, or send it fresh.
+Issue #2 step 4. **Sent 2026-09-16 ~14:5x UTC** from
+`daniel@magnoliatechservices.com` to `chad.gray@williamsoncounty-tn.gov`.
+Gmail message/thread id `1a0aaadefe35334a`.
+
+Sent via the Composio `gmail` toolkit (account `gmail_voteen-ghatti`): the
+claude.ai Gmail MCP session was expired again, the same failure that blocked the
+2026-09-08 draft. That Sep 8 draft no longer exists in either connected mailbox
+— nothing stale is left to send by accident. The mailbox had no prior
+correspondence with `williamsoncounty-tn.gov`, so this opens a new thread.
+
+Body below is as sent, except that paragraphs were joined onto single lines
+before sending (the Gmail tool converts every newline to `<br/>`, so the
+80-column wrapping here would have rendered as mid-sentence breaks).
 
 **To:** chad.gray@williamsoncounty-tn.gov
 **Subject:** Request: certified candidate list, Thompson's Station municipal election (Nov 3, 2026)
@@ -54,6 +62,6 @@ daniel@magnoliatechservices.com
 
 ---
 
-Phone alternative if email goes unanswered: (615) 790-5711.
+No reply yet as of 2026-09-16. Phone alternative if email goes unanswered: (615) 790-5711.
 Save whatever reply arrives into `raw/` and record it in a new
 `candidates-observed-*.md` before touching the elections JSON.

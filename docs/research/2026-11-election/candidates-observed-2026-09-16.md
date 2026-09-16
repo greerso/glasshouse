@@ -46,7 +46,8 @@ Administrator of Elections.
 
 ## Next
 
-- Email `chad.gray@williamsoncounty-tn.gov` asking for the certified list and where
-  it will be posted. Draft prepared; **not sent** pending review.
+- ~~Email `chad.gray@williamsoncounty-tn.gov` asking for the certified list and where
+  it will be posted.~~ **Sent 2026-09-16** — Gmail thread `1a0aaadefe35334a`; text
+  archived in `wcec-email-draft-2026-09-16.md`. Awaiting a written reply.
 - Re-check after the Sep 11 minutes are posted — that document will name them.
 - Do not infer names from the Williamson Herald, campaign material, or `Person`.
