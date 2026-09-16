@@ -224,9 +224,41 @@ tag is only referenced once the stored image is patched. `next build` needs no
 database (`SKIP_ENV_VALIDATION=1`, and it logs `DATABASE_URL not set`), so a
 build failure is a real code failure.
 
+**Check the checkout before you tag.** `origin` in that directory was
+repointed to `Magnolia-Tech-Services-LLC/openship-glasshouse-web`, a different
+repo with no `glasshouse` branch, and the local branch refs were clobbered with
+it — so `git pull --ff-only origin glasshouse` now either fails or silently
+builds `0d8bff3f`. Until #11 settles which repo is the source of truth, fetch
+by explicit URL and confirm the commit:
+
+```bash
+git fetch git@github.com:greerso/glasshouse-web.git <branch>
+git checkout -B build/<branch> FETCH_HEAD
+git log --oneline -1          # must be the commit you mean to ship
+```
+
 Verify by hostname, never by Openship's deployment status — `ready` means the
-container started. Check that the footer's source link, `SOURCE_COMMIT`, and
-the `/_next/static/<sha>/` asset paths all carry the tag you built.
+container started. Check the footer's source link and the cache-handler
+namespace in the logs; both carry the full commit SHA.
+
+**`docker exec … printenv NEXT_PUBLIC_*` is not the truth and will mislead
+you.** The container still shows `NEXT_PUBLIC_REALM_DOMAIN=glasshouse.town`
+from a value Openship flattened into its stored compose map back in August.
+Removing the key from the *env store* did not remove it — it unmasked that
+older copy underneath, and `PATCH …/services/<id>` with an `environment` map
+**merges**, so the key cannot be deleted that way.
+
+It is inert, because Next inlines every `NEXT_PUBLIC_*` at build time into the
+server bundle as well as the client one, so the runtime variable is never read.
+That is the whole point of #4, and this is the proof of it. Check the rendered
+output rather than the environment:
+
+```bash
+curl -s https://glasshouse.greerso.com/robots.txt | grep Host
+# Host: https://glasshouse.greerso.com   <- the baked value wins
+```
+
+If that ever shows `glasshouse.town`, the build args were wrong, not the env.
 
 ## Task 11 — meeting proof (unblocked slice, 2026-08-17)
 
