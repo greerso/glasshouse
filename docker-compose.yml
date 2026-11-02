@@ -114,6 +114,9 @@ services:
       MINIO_ROOT_USER: glasshouse
       # MINIO_ROOT_PASSWORD is store-only (see header). MINIO_ROOT_USER is
       # also the app's S3_ACCESS_KEY, so the app authenticates as root.
+      # Go 1.24+ opens MPTCP listeners by default. OpenShip drops compose
+      # `sysctls:`, so this is how MPTCP stays off here (CVE-2026-98432).
+      GODEBUG: multipathtcp=0
     volumes: ["./volumes/miniodata:/data"]
     ports: ["9000:9000", "9001:9001"]
     restart: unless-stopped
