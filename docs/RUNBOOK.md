@@ -115,6 +115,12 @@ pair in the call, so a mixed secret/non-secret update must go through
 `openship api <path> -X PUT`. Existing secret values are recoverable with
 `docker exec <container> printenv <KEY>`.
 
+minio's store carries `GODEBUG=multipathtcp=0` (CVE-2026-98432, MAG-566).
+MinIO's Go runtime opens MPTCP listeners by default and OpenShip ignores
+compose `sysctls:`, so this row is what keeps MPTCP off. Keep it through any
+env PUT. Check with the host-ops runner read `cve-98432-status`:
+`openship-glasshouse-minio` has no MPTCP listener other than 127.0.0.11.
+
 ## Media CDN — cdn-glasshouse.greerso.com
 
 Staging CDN for MinIO, live 2026-09-07 (#5). Replaces `cdn.glasshouse.town`,
