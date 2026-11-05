@@ -1,12 +1,12 @@
-# node:20.11.1-bookworm-slim linux/amd64 (thinkstation is x86_64).
+# node:22.23.4-bookworm-slim linux/amd64 (thinkstation is x86_64).
 # Pinned on first thinkstation pull the same way pgsync/Dockerfile does.
-FROM node:20.11.1-bookworm-slim@sha256:357deca6eb61149534d32faaf5e4b2e4fa3549c2be610ee1019bf340ea8c51ec AS build
+FROM node:22.23.4-bookworm-slim@sha256:9f0dde62d10e7ff7a310ecaebd66225f6b46c17e6cb778449a77b05d3541bea2 AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
 RUN npm ci && npm run build && npm prune --omit=dev
 
-FROM node:20.11.1-bookworm-slim@sha256:357deca6eb61149534d32faaf5e4b2e4fa3549c2be610ee1019bf340ea8c51ec
+FROM node:22.23.4-bookworm-slim@sha256:9f0dde62d10e7ff7a310ecaebd66225f6b46c17e6cb778449a77b05d3541bea2
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update \
