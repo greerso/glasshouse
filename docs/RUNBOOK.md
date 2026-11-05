@@ -334,7 +334,7 @@ Same prebuilt-tag pattern as pgsync (`svc_-SgMFWFVOx_0-N4B`):
 - `openship service sync docker-compose.yml --project proj_5AhrGz_cRgruBEi7 --yes`
 - After sync, confirm stored web is still `image=glasshouse-web:<sha>` `enabled=true`,
   pgsync `commandArgv=['-d']`, wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
-- PATCH stored ingest: `image=glasshouse-ingest:$SHA`, `build=""`, `enabled=true`,
+- PATCH stored ingest: `build` context `./ingest` (no `image=`), `enabled=true`,
   `commandArgv=["node","dist/index.js"]`, `environment` from `.env.ingest`.
 - `POST /api/deployments` with **only** that ingest serviceId (or all currently
   enabled compose services if a targeted deploy drops a sibling).
@@ -422,8 +422,8 @@ SHA=$(git rev-parse --short HEAD)   # expect cf91be7 or later
 docker build -t glasshouse-ingest:$SHA ./ingest
 docker run --rm --entrypoint pdftotext glasshouse-ingest:$SHA -v
 # pdftotext version 22.12.0 (or the bookworm poppler-utils line)
-# set project .env INGEST_IMAGE=glasshouse-ingest:$SHA
-# PATCH stored ingest svc_HPIp4xRYqr-a4-DE image= that tag, enabled=true, build=""
+# Superseded (MAG-1038): OpenShip now builds ingest from ./ingest on deploy;
+# the local build above is only a pre-flight check. No INGEST_IMAGE, no image= PATCH.
 # POST /api/deployments/build/access serviceIds=[ingest]
 ```
 
@@ -437,7 +437,7 @@ grep -E '^WEB_IMAGE=' /data/openship/projects/glasshouse/.env
 Do not `service sync` for a minutes-vote rebuild. Targeted PATCH + deploy is
 enough. After any accidental sync, re-read stored models: web
 `image=glasshouse-web:<sha>` `enabled=true`, ingest
-`image=glasshouse-ingest:<sha>` `enabled=true`, pgsync `commandArgv=['-d']`,
+`build` context `./ingest` `enabled=true`, pgsync `commandArgv=['-d']`,
 wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
 
 ### Watch the db after every deploy
