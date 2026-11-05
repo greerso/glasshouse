@@ -129,11 +129,10 @@ services:
     volumes: ["valkeydata:/data"]
     restart: unless-stopped
   ingest:
-    # Openship v0.5.0 builds from the project dir (`.`), not a sibling
-    # context. Prebuild on the thinkstation:
-    #   docker build -t glasshouse-ingest:<sha> ./ingest
-    # INGEST_IMAGE is interpolated from this project's .env at `service sync`.
-    image: ${INGEST_IMAGE}
+    # Built by OpenShip from the repo-relative ./ingest context (0.9.5+;
+    # ./ingest is inside the repo, not a sibling). The Node base image is
+    # pinned by digest in ingest/Dockerfile.
+    build: { context: ./ingest, dockerfile: Dockerfile }
     command: ["node", "dist/index.js"]
     # Env is store-only (see header).
     environment: { TZ: America/Chicago }
