@@ -330,7 +330,7 @@ Same prebuilt-tag pattern as pgsync (`svc_-SgMFWFVOx_0-N4B`):
 - Write untracked `/data/openship/projects/glasshouse/.env.ingest` from `.env.example`.
   `OC_API_KEY` is the existing ingest ServiceApiKey
   (`/data/openship/projects/glasshouse/.ingest-api-key`, mode 600).
-- `INGEST_IMAGE=glasshouse-ingest:$SHA` in the project `.env`.
+- Ingest is built by OpenShip from `./ingest` (no `INGEST_IMAGE`).
 - `openship service sync docker-compose.yml --project proj_5AhrGz_cRgruBEi7 --yes`
 - After sync, confirm stored web is still `image=glasshouse-web:<sha>` `enabled=true`,
   pgsync `commandArgv=['-d']`, wrapper `svc_nzXk6h_WJBllRV6i` disabled, `tasks` disabled.
@@ -430,8 +430,8 @@ docker run --rm --entrypoint pdftotext glasshouse-ingest:$SHA -v
 ### Before any `service sync`
 
 ```bash
-grep -E '^(WEB_IMAGE|INGEST_IMAGE)=' /data/openship/projects/glasshouse/.env
-# both must be the intended prebuilt tags. If either is missing or stale, stop.
+grep -E '^WEB_IMAGE=' /data/openship/projects/glasshouse/.env
+# must be the intended prebuilt tag. If missing or stale, stop. Ingest is built from ./ingest.
 ```
 
 Do not `service sync` for a minutes-vote rebuild. Targeted PATCH + deploy is
